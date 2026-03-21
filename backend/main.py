@@ -43,6 +43,20 @@ async def analyze_food(image: UploadFile = File(...)):
         print(f"[API] Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+class RecommendRequest(BaseModel):
+    history: list
+    settings: dict
+
+@app.post("/recommend")
+async def get_recommendation(data: RecommendRequest):
+    try:
+        print(f"[API] Generating recommendation for today...")
+        result = await ai_service.get_recommendation(data.history, data.settings)
+        return result
+    except Exception as e:
+        print(f"[API] Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     # TANPA reload=True agar bisa dijalankan langsung via 'python main.py'
