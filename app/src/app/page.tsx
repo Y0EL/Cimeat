@@ -12,6 +12,8 @@ import HomeTab from "../components/HomeTab";
 import LacakTab from "../components/LacakTab";
 import ProfileTab from "../components/ProfileTab";
 import GoalSetupModal from "../components/GoalSetupModal";
+import RecipeModal from "../components/RecipeModal";
+import RecipeChatModal from "../components/RecipeChatModal";
 
 const BACKEND_URL = "http://localhost:8000";
 
@@ -79,6 +81,11 @@ export default function App() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [randomCal, setRandomCal] = useState(0);
   const [showGoalSetup, setShowGoalSetup] = useState(false);
+  const [showRecipeModal, setShowRecipeModal] = useState(false);
+  const [recipeLoading, setRecipeLoading] = useState(false);
+  const [recipeResult, setRecipeResult] = useState("");
+  const [savedRecipes, setSavedRecipes] = useState<any[]>([]);
+  const [activeRecipeChat, setActiveRecipeChat] = useState<any>(null);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [tempSettings, setTempSettings] = useState(DEFAULT_SETTINGS);
   const [mounted, setMounted]        = useState(false);
@@ -105,6 +112,8 @@ export default function App() {
     } else {
       setShowGoalSetup(true);
     }
+    const sr = localStorage.getItem("cimeat_saved_recipes");
+    if (sr) setSavedRecipes(JSON.parse(sr));
   }, []);
 
   // ── Analyzing animation
@@ -124,6 +133,7 @@ export default function App() {
     if (loadingRec) return;
     const today = new Date().toLocaleDateString("id-ID");
     const todayH = history.filter(h => h.date === today);
+    const pastH = history.filter(h => h.date !== today).slice(0, 30);
     const cacheKey = "cimeat_ai_rec_" + today;
     
     if (!forceRefresh) {
@@ -140,7 +150,7 @@ export default function App() {
       const res = await fetch(`${BACKEND_URL}/recommend`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ history: todayH, settings }),
+        body: JSON.stringify({ history_today: todayH, history_past: pastH, settings }),
       });
       const data = await res.json();
       setAiRecommendation(data.recommendation);
@@ -162,16 +172,72 @@ export default function App() {
   }, [activeTab]);
 
   // ── Actions
+  const handleGenerateRecipe = async (images: File[], additionalPrompt: string = "") => {
+    setRecipeLoading(true);
+    setRecipeResult("");
+    
+    // Hitung sisa makro
+    const today = new Date().toLocaleDateString("id-ID");
+    const todayHist = history.filter(h => h.date === today);
+    const consumed = todayHist.reduce((a, c) => ({ 
+      cal: a.cal + (c.calories || 0),
+      pro: a.pro + (c.protein || 0),
+      car: a.car + (c.carbs || 0),
+      fat: a.fat + (c.fat || 0)
+    }), { cal: 0, pro: 0, car: 0, fat: 0 });
+
+    const remCal = Math.max(0, settings.calorieGoal - consumed.cal);
+    const remPro = Math.max(0, settings.proteinGoal - consumed.pro);
+    const remCar = Math.max(0, settings.carbsGoal - consumed.car);
+    const remFat = Math.max(0, settings.fatGoal - consumed.fat);
+
+    const fd = new FormData();
+    if (images && images.length > 0) {
+      images.forEach(img => fd.append("images", img));
+    } else {
+      // Fast api will complain if "images" is not present, we can append empty blob or handle it in backend.
+      // Easiest is to send an empty blob if backend expects it, or just let backend handle missing field.
+    }
+    fd.append("calorieGoal", remCal.toString());
+    fd.append("proteinGoal", remPro.toString());
+    fd.append("carbsGoal", remCar.toString());
+    fd.append("fatGoal", remFat.toString());
+    if (additionalPrompt) {
+      fd.append("additionalPrompt", additionalPrompt);
+    }
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/recipe`, { method: "POST", body: fd });
+      if (!res.ok) throw new Error("Gagal membuat resep");
+      const data = await res.json();
+      setRecipeResult(data.recipe);
+    } catch (err) {
+      setRecipeResult("Maaf bro, Chef AI lagi bermasalah. Coba lagi nanti ya! 👨‍🍳");
+    } finally {
+      setRecipeLoading(false);
+    }
+  };
+
   const pushHistory = (item: any) => {
     const updated = [item, ...history].slice(0, 50);
     setHistory(updated);
     localStorage.setItem("cimeat_history", JSON.stringify(updated));
+    
+    // Invalidate AI Coach cache so it refreshes with the new food
+    const today = new Date().toLocaleDateString("id-ID");
+    localStorage.removeItem("cimeat_ai_rec_" + today);
+    setAiRecommendation(""); // Clear state to force re-fetch on next LacakTab visit
   };
 
   const deleteItem = (id: string) => {
     const updated = history.filter(h => h.id !== id);
     setHistory(updated);
     localStorage.setItem("cimeat_history", JSON.stringify(updated));
+    
+    // Invalidate AI Coach cache
+    const today = new Date().toLocaleDateString("id-ID");
+    localStorage.removeItem("cimeat_ai_rec_" + today);
+    setAiRecommendation("");
   };
 
   const clearHistory = () => {
@@ -185,6 +251,34 @@ export default function App() {
     setSettings(tempSettings);
     localStorage.setItem("cimeat_settings", JSON.stringify(tempSettings));
     setShowGoalSetup(false);
+  };
+
+  const saveRecipe = (text: string) => {
+    const match = text.match(/^#\s+(.*)$/m) || text.match(/^##\s+(.*)$/m);
+    let title = match ? match[1].replace(/🍳/g, '').trim() : "Resep Baru dari AI";
+    const newRecipe = { id: Date.now().toString(), title, text, date: new Date().toLocaleDateString("id-ID"), chat_history: [] };
+    const updated = [newRecipe, ...savedRecipes];
+    setSavedRecipes(updated);
+    localStorage.setItem("cimeat_saved_recipes", JSON.stringify(updated));
+    setShowRecipeModal(false);
+    setActiveTab("profile");
+  };
+
+  const deleteSavedRecipe = (id: string) => {
+    if (confirm("Hapus resep ini?")) {
+      const updated = savedRecipes.filter(r => r.id !== id);
+      setSavedRecipes(updated);
+      localStorage.setItem("cimeat_saved_recipes", JSON.stringify(updated));
+    }
+  };
+
+  const updateSavedRecipe = (updatedRecipe: any) => {
+    const updated = savedRecipes.map(r => r.id === updatedRecipe.id ? updatedRecipe : r);
+    setSavedRecipes(updated);
+    localStorage.setItem("cimeat_saved_recipes", JSON.stringify(updated));
+    if (activeRecipeChat?.id === updatedRecipe.id) {
+      setActiveRecipeChat(updatedRecipe);
+    }
   };
 
   const logout = () => {
@@ -326,7 +420,7 @@ export default function App() {
                 onDeleteItem={deleteItem} />
             )}
             {activeTab === "lacak" && (
-              <LacakTab {...{ settings, dailyMacros, streak, weeklyData, weekMac, aiRecommendation, loadingRec }} onRefreshRec={() => fetchRecommendation(true)} />
+              <LacakTab {...{ settings, dailyMacros, streak, weeklyData, weekMac, aiRecommendation, loadingRec }} onRefreshRec={() => fetchRecommendation(true)} onOpenRecipe={() => { setShowRecipeModal(true); setRecipeResult(""); }} />
             )}
             {activeTab === "history" && (
               <HistoryTab {...{ history, grouped }}
@@ -335,7 +429,10 @@ export default function App() {
                 onClear={clearHistory} />
             )}
             {activeTab === "profile" && (
-              <ProfileTab userSettings={settings} onUpdateSettings={setSettings} userEmail={userEmail} streak={streak} onLogout={logout} onOpenGoalSetup={() => { setTempSettings(settings); setShowGoalSetup(true); }} />
+              <ProfileTab 
+                userSettings={settings} onUpdateSettings={setSettings} userEmail={userEmail} streak={streak} onLogout={logout} onOpenGoalSetup={() => { setTempSettings(settings); setShowGoalSetup(true); }}
+                savedRecipes={savedRecipes} onOpenChat={(r: any) => setActiveRecipeChat(r)} onDeleteRecipe={deleteSavedRecipe}
+              />
             )}
           </motion.div>
         </AnimatePresence>
@@ -358,8 +455,29 @@ export default function App() {
         <NavItem icon={<User size={24} strokeWidth={activeTab === "profile" ? 2.5 : 2} />} label="Profil" active={activeTab === "profile"} onClick={() => setActiveTab("profile")} />
       </nav>
 
-      {/* ── Modals (Goal, Draft, Detail) ── */}
+      {/* ── Modals (Goal, Draft, Detail, Recipe) ── */}
       <AnimatePresence>
+        {/* Recipe Modal */}
+        {showRecipeModal && (
+          <RecipeModal 
+            onClose={() => setShowRecipeModal(false)} 
+            onGenerate={handleGenerateRecipe}
+            loading={recipeLoading}
+            result={recipeResult}
+            onSave={saveRecipe}
+          />
+        )}
+        
+        {/* Recipe Chat Modal */}
+        {activeRecipeChat && (
+          <RecipeChatModal
+            recipe={activeRecipeChat}
+            onClose={() => setActiveRecipeChat(null)}
+            onUpdateRecipe={updateSavedRecipe}
+            onDelete={(id: string) => { deleteSavedRecipe(id); setActiveRecipeChat(null); }}
+          />
+        )}
+
         {/* Goal Setup Full Modal Wizard */}
         {showGoalSetup && (
           <GoalSetupModal 

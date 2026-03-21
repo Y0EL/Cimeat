@@ -160,7 +160,7 @@ export function WeeklyChart({ data, goal }: { data: any[]; goal: number }) {
                 transition={{ duration: 0.7, delay: i * 0.07, ease: "easeOut" }}
                 className="w-full rounded-t-lg" style={{ backgroundColor: bg, minHeight: 3 }} />
             </div>
-            <span className="text-[9px] font-black uppercase text-center" style={{ color: tc }}>{d.day?.slice(0, 2)}</span>
+            <span className="text-[7px] sm:text-[9px] font-black uppercase text-center" style={{ color: tc }}>{d.day?.slice(0, 3)}</span>
           </div>
         );
       })}

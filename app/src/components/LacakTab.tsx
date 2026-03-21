@@ -1,10 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Camera, Flame, Loader2, RefreshCcw, ScanLine, Sparkles, Zap } from "lucide-react";
+import { Camera, Flame, Loader2, RefreshCcw, ScanLine, Sparkles, Zap, ChefHat } from "lucide-react";
 import { MacroBar, WeeklyChart } from "./Common";
 
-export default function LacakTab({ settings, dailyMacros, streak, weeklyData, weekMac, aiRecommendation, loadingRec, onRefreshRec }: any) {
+export default function LacakTab({ settings, dailyMacros, streak, weeklyData, weekMac, aiRecommendation, loadingRec, onRefreshRec, onOpenRecipe }: any) {
   const goal = settings.calorieGoal;
   
   return (
@@ -20,10 +20,16 @@ export default function LacakTab({ settings, dailyMacros, streak, weeklyData, we
                 </div>
                 <h4 className="text-xl font-black tracking-tight">AI Coach</h4>
              </div>
-             <button onClick={onRefreshRec} disabled={loadingRec} 
-                className="p-2.5 bg-white/5 hover:bg-white/10 rounded-full transition-all active:scale-90 disabled:opacity-50">
-                <RefreshCcw size={16} className={loadingRec ? "animate-spin text-orange" : ""} />
-             </button>
+             <div className="flex items-center gap-2">
+               <button onClick={onOpenRecipe} 
+                  className="px-3 py-1.5 bg-orange hover:bg-[#FF8C61] text-white rounded-full transition-all active:scale-90 flex items-center gap-1.5 font-black text-[10px] uppercase tracking-widest shadow-[0_5px_15px_-5px_#FF6B35]">
+                  <ChefHat size={14} /> Resep
+               </button>
+               <button onClick={onRefreshRec} disabled={loadingRec} 
+                  className="p-2.5 bg-white/5 hover:bg-white/10 rounded-full transition-all active:scale-90 disabled:opacity-50 border border-white/10">
+                  <RefreshCcw size={14} className={loadingRec ? "animate-spin text-orange" : "text-white"} />
+               </button>
+             </div>
           </div>
 
           <div className="relative min-h-[80px] flex items-center">

@@ -79,12 +79,30 @@ class AIService:
                 print(f"[AI] Error: {e}")
                 raise e
 
-    async def get_recommendation(self, history_data: list, settings: dict):
-        # Format data buat prompt
-        history_summary = "\\n".join([f"- {h['name']} ({h['calories']} kcal, P:{h['protein']}g, K:{h['carbs']}g, L:{h['fat']}g)" for h in history_data])
+    async def get_recommendation(self, history_today: list, history_past: list, settings: dict):
+        # Format data hari ini
+        today_summary = "\\n".join([f"- {h.get('name', 'Unknown')} ({h.get('calories', 0)} kcal, P:{h.get('protein', 0)}g, K:{h.get('carbs', 0)}g, L:{h.get('fat', 0)}g)" for h in history_today])
         
+        # Format histori 7 hari terakhir
+        past_summary = ""
+        if history_past:
+            valid_scores = [h.get('score', 0) for h in history_past if isinstance(h.get('score'), (int, float))]
+            avg_score = sum(valid_scores) / len(valid_scores) if valid_scores else 0
+            
+            categories = [h.get('category', 'Lainnya') for h in history_past]
+            most_common_cat = max(set(categories), key=categories.count) if categories else "Campur"
+            
+            past_summary = f"""
+        DATA HABIT / KEBIASAAN MAKAN (7 HARI TERAKHIR):
+        - Rata-rata Health Score: {round(avg_score, 1)}/100
+        - Kategori Paling Sering: {most_common_cat}
+        - Total makanan / catatan: {len(history_past)} porsi
+            """
+        else:
+            past_summary = "DATA HABIT: Belum ada cukup data historis yang terkumpul."
+
         prompt = f"""
-        Bertindaklah sebagai asisten gizi pribadi yang sangat ramah dan memotivasi.
+        Bertindaklah sebagai asisten gizi pribadi yang sangat ramah, suportif, dan asik layaknya bestie.
         
         TARGET HARIAN USER:
         - Kalori: {settings.get('calorieGoal')} kcal
@@ -92,17 +110,20 @@ class AIService:
         - Karbohidrat: {settings.get('carbsGoal')}g
         - Lemak: {settings.get('fatGoal')}g
         
+        {past_summary}
+        
         MAKANAN HARI INI:
-        {history_summary if history_data else "Belum ada makanan yang dicatat hari ini."}
+        {today_summary if history_today else "Belum ada makanan yang dicatat hari ini."}
         
         TUGAS ANDA:
-        Berikan 2-3 kalimat saran yang sangat personal, singkat, dan praktis menggunakan Bahasa Indonesia yang santai tapi profesional.
+        Berikan 2-4 kalimat saran yang sangat personal, singkat, dan praktis menggunakan Bahasa Indonesia yang santai tapi profesional (gunakan gaya bahasa gaul seperti 'lu', 'gue', atau 'bro').
         Fokus pada: 
-        1. Apa nutrisi yang masih kurang atau sudah kelebihan?
-        2. Rekomendasi 1-2 menu lokal Indonesia yang cocok dimakan selanjutnya untuk menyeimbangkan target.
-        3. Berikan motivasi singkat.
+        1. Tegur kebiasaan buruk atau berikan pujian berdasarkan "DATA HABIT" (contoh: "Gue perhatiin akhir-akhir ini lo kebanyakan jajan nih!").
+        2. Info apa nutrisi yang masih kurang atau sudah kelebihan HARI INI.
+        3. Rekomendasi 1-2 menu lokal Indonesia yang cocok dimakan selanjutnya untuk menyeimbangkan target sisa hari ini.
+        4. Berikan motivasi singkat.
 
-        Kembalikan HANYA teks saran, tanpa awalan atau penutup lainnya.
+        Kembalikan HANYA teks saran, tanpa awalan `Ini sarannya:` atau penjelasan lainnya, murni teks paragraf saja!
         """
 
         url = self.cloud_url if self.mode == "cloud" else self.local_url
@@ -127,5 +148,116 @@ class AIService:
             except Exception as e:
                 print(f"[AI Recommendation] Error: {e}")
                 return {"recommendation": "Gagal mendapatkan saran AI. Tetap semangat jalani dietmu ya bro! 💪"}
+
+    async def generate_recipe(self, images_bytes: list, settings: dict, additional_prompt: str = ""):
+        base64_images = [base64.b64encode(img).decode('utf-8') for img in images_bytes] if images_bytes else []
+        
+        user_request_text = f"\nREQUEST TAMBAHAN USER: {additional_prompt}\n(Tolong perhatikan request ini baik-baik!)\n" if additional_prompt.strip() else ""
+        
+        prompt = f"""
+        Bertindaklah sebagai Chef AI Pribadi dan Ahli Gizi Cimeat.
+        
+        TUJUAN:
+        Buatkan SATU resep masakan lokal Indonesia yang simpel, logis, dan enak menggunakan bahan-bahan utama yang terlihat di foto (boleh ditambah bumbu dapur dasar). 
+        Jika tidak ada foto yang diberikan, buatkan resep bebas sesuai target kalori.
+        Masakan tersebut harus dikira-kira agar porsinya mendekati sisa target nutrisi user hari ini.{user_request_text}
+
+        SISA TARGET MAKRO USER HARI INI:
+        - Kalori: {settings.get('calorieGoal')} kcal
+        - Protein: {settings.get('proteinGoal')}g
+        - Karbohidrat: {settings.get('carbsGoal')}g
+        - Lemak: {settings.get('fatGoal')}g
+
+        FORMAT BALASAN ANDA (Gunakan Markdown):
+        # 🍳 [Nama Masakan]
+        *Teks pembuka singkat yang asik ala anak Jaksel/gaul.*
+
+        **Bahan Tambahan (Asumsi bumbu/bahan lain):**
+        - ...
+
+        **Cara Masak Senggol Bacok:**
+        1. ...
+        2. ...
+        
+        **Estimasi Nutrisi untuk Resep Ini:**
+        - **Kalori:** ... kcal
+        - **Protein:** ... g
+        - **Karbo:** ... g
+        - **Lemak:** ... g
+        
+        HANYA KEMBALIKAN TEKS MARKDOWN TERSEBUT.
+        """
+
+        url = self.cloud_url if self.mode == "cloud" else self.local_url
+        endpoint = f"{url}/api/generate"
+        
+        headers = {}
+        if self.mode == "cloud":
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False
+        }
+        
+        if base64_images:
+            payload["images"] = base64_images
+
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            try:
+                response = await client.post(endpoint, json=payload, headers=headers)
+                response.raise_for_status()
+                result = response.json()
+                return {"recipe": result.get("response", "").strip()}
+            except Exception as e:
+                print(f"[AI Recipe] Error: {e}")
+                return {"recipe": "Waduh bro, AI Chef kita lagi error/sibuk. Coba foto ulang atau muat ulang halamannya ya! 👨‍🍳"}
+
+    async def chat_recipe(self, recipe_text: str, chat_history: list, new_message: str):
+        history_text = "\n".join([f"{'USER' if msg.get('role') == 'user' else 'AI'}: {msg.get('content')}" for msg in chat_history])
+        
+        prompt = f"""
+        Bertindaklah sebagai Chef AI Pribadi dan Ahli Gizi Cimeat.
+        
+        Konteks: Kita sedang mendiskusikan resep hasil buatan AI sebelumnya:
+        ===== RESEP AWAL =====
+        {recipe_text}
+        ======================
+        
+        RIWAYAT OBROLAN SAAT INI:
+        {history_text if chat_history else "Belum ada riwayat."}
+        
+        PERTANYAAN/PERUBAHAN DARI USER:
+        {new_message}
+        
+        TUGAS ANDA:
+        Balaslah dalam Bahasa Indonesia yang gaul (lo, gue, bro, bestie) tapi tetap informatif dan relevan sebagai asisten dapur. 
+        Jawab pertanyaan, modifikasi cara masak, saran bahan pengganti, atau hitung ulang makro jika diminta. Jangan sebutkan Anda AI, bertindaklah natural seperti teman di dapur.
+        Gunakan gaya Markdown (huruf tebal, poin) jika membalas resep atau instruksi baru.
+        KEMBALIKAN HANYA TEKS BALASAN LANGSUNG (tidak perlu `Saya adalah AI` dll).
+        """
+
+        url = self.cloud_url if self.mode == "cloud" else self.local_url
+        endpoint = f"{url}/api/generate"
+        headers = {}
+        if self.mode == "cloud":
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False
+        }
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            try:
+                response = await client.post(endpoint, json=payload, headers=headers)
+                response.raise_for_status()
+                result = response.json()
+                return {"reply": result.get("response", "").strip()}
+            except Exception as e:
+                print(f"[AI Chat Recipe] Error: {e}")
+                return {"reply": "Waduh bro, Chef AI gagal nangkep maksud lo. Coba difrasenya dibedain atau cek koneksi deh! 🥺"}
 
 ai_service = AIService()

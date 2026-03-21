@@ -1,10 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Edit2, Flame, LogOut, Mail, ShieldCheck, Sparkles, User, UserCheck } from "lucide-react";
+import { Edit2, Flame, LogOut, Mail, ShieldCheck, Sparkles, User, UserCheck, BookOpen, Trash2, MessageSquare } from "lucide-react";
 import { useState } from "react";
 
-export default function ProfileTab({ userSettings, onUpdateSettings, userEmail, streak, onLogout, onOpenGoalSetup }: any) {
+export default function ProfileTab({ userSettings, onUpdateSettings, userEmail, streak, onLogout, onOpenGoalSetup, savedRecipes, onOpenChat, onDeleteRecipe }: any) {
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState(userSettings.username || "Cimeat User");
 
@@ -63,6 +63,41 @@ export default function ProfileTab({ userSettings, onUpdateSettings, userEmail, 
               </div>
            </div>
         </div>
+      </div>
+
+      {/* Koleksi Resep */}
+      <div className="space-y-4">
+         <p className="text-[10px] text-[#8A8886] font-black uppercase tracking-widest px-4 flex items-center gap-2">
+            <BookOpen size={12} className="text-orange" /> Koleksi Resep AI
+         </p>
+         
+         {savedRecipes?.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 px-1">
+               {savedRecipes.map((recipe: any) => (
+                  <div key={recipe.id} onClick={() => onOpenChat(recipe)} className="bg-white rounded-3xl p-5 border border-[#F0EDE8]/50 shadow-sm flex items-center justify-between group active:scale-[0.98] transition-all cursor-pointer hover:border-orange/30">
+                     <div className="flex-1 min-w-0 pr-3">
+                        <h4 className="font-black text-[#1A1C1E] text-sm truncate">{recipe.title}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                           <p className="text-[10px] bg-[#F8F7F4] text-[#8A8886] px-2 py-0.5 rounded-full font-bold">{recipe.date}</p>
+                           {recipe.chat_history?.length > 0 && (
+                              <p className="text-[10px] text-orange font-bold flex items-center gap-1">
+                                 <MessageSquare size={10} /> {recipe.chat_history.length / 2} Obrolan
+                              </p>
+                           )}
+                        </div>
+                     </div>
+                     <button onClick={(e) => { e.stopPropagation(); onDeleteRecipe(recipe.id); }} className="p-2.5 bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition-colors opacity-0 group-hover:opacity-100">
+                        <Trash2 size={16} />
+                     </button>
+                  </div>
+               ))}
+            </div>
+         ) : (
+            <div className="bg-[#F8F7F4] rounded-3xl p-6 border-2 border-dashed border-[#F0EDE8] text-center opacity-70">
+               <BookOpen size={24} className="text-[#A6A4A1] mx-auto mb-2" />
+               <p className="text-xs font-bold text-[#8A8886]">Belum ada resep yang disimpan. Tanya AI sekarang!</p>
+            </div>
+         )}
       </div>
 
       {/* Menu Options */}
