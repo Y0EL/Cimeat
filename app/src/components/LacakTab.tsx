@@ -1,56 +1,57 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Flame, Loader2, RefreshCcw, Sparkles, Zap } from "lucide-react";
+import { Camera, Flame, Loader2, RefreshCcw, ScanLine, Sparkles, Zap } from "lucide-react";
 import { MacroBar, WeeklyChart } from "./Common";
 
 export default function LacakTab({ settings, dailyMacros, streak, weeklyData, weekMac, aiRecommendation, loadingRec, onRefreshRec }: any) {
   const goal = settings.calorieGoal;
   
   return (
-    <motion.div key="lacak" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6 pb-20">
+    <motion.div key="lacak" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6 pb-36">
       
-      {/* AI Smart Coaching Section (NEW) */}
-      <div className="rounded-[2.5rem] p-8 bg-[#1A1C1E] text-white overflow-hidden relative group">
+      {/* AI Smart Coaching Section */}
+      <div className="rounded-[2.5rem] p-8 glass-dark bg-[#2A2D30]/90 text-white overflow-hidden relative group border border-white/5 shadow-xl">
           <div className="absolute -top-10 -right-10 w-40 h-40 bg-orange/20 rounded-full blur-3xl group-hover:bg-orange/30 transition-all" />
           <div className="relative flex items-center justify-between mb-4">
-             <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-orange flex items-center justify-center">
-                   <Sparkles size={16} className="text-white" />
+             <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-orange to-[#FF8C61] flex items-center justify-center shadow-[0_5px_15px_-5px_#FF6B35]">
+                   <Sparkles size={18} className="text-white" />
                 </div>
-                <h4 className="text-xl font-black">AI Nutrition Coach</h4>
+                <h4 className="text-xl font-black tracking-tight">AI Coach</h4>
              </div>
              <button onClick={onRefreshRec} disabled={loadingRec} 
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all active:scale-90 disabled:opacity-50">
-                <RefreshCcw size={16} className={loadingRec ? "animate-spin" : ""} />
+                className="p-2.5 bg-white/5 hover:bg-white/10 rounded-full transition-all active:scale-90 disabled:opacity-50">
+                <RefreshCcw size={16} className={loadingRec ? "animate-spin text-orange" : ""} />
              </button>
           </div>
 
-          <div className="relative">
+          <div className="relative min-h-[80px] flex items-center">
              {loadingRec ? (
-                <div className="py-4 flex flex-col items-center gap-3">
-                   <Loader2 size={32} className="text-orange animate-spin" />
-                   <p className="text-xs text-white/50 font-bold uppercase tracking-widest">Menganalisis pola makanmu...</p>
+                <div className="w-full space-y-3">
+                   <div className="h-4 bg-white/10 rounded-full w-full animate-pulse" />
+                   <div className="h-4 bg-white/10 rounded-full w-5/6 animate-pulse" />
+                   <div className="h-4 bg-white/10 rounded-full w-4/6 animate-pulse" />
                 </div>
              ) : (
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-white/80 text-[15px] leading-relaxed font-medium">
+                <motion.p initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="text-white/80 text-[15px] leading-relaxed font-medium">
                    "{aiRecommendation || "Belum ada saran untuk saat ini. Coba catat makananmu dulu bro!"}"
                 </motion.p>
              )}
           </div>
           
-          <div className="mt-6 pt-6 border-t border-white/10 flex items-center justify-between">
-             <p className="text-[10px] font-black text-orange uppercase tracking-[0.2em]">Contextual Insights</p>
-             <div className="h-1.5 w-12 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full w-2/3 bg-orange rounded-full" />
+          <div className="mt-6 pt-5 border-t border-white/10 flex items-center justify-between">
+             <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em]">Contextual Insights</p>
+             <div className="h-1 w-12 bg-white/10 rounded-full overflow-hidden">
+                <motion.div animate={{ x: ["-100%", "100%"] }} transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }} className="h-full w-1/2 bg-orange rounded-full" />
              </div>
           </div>
       </div>
 
       {/* Daily Macro Card */}
-      <div className="bg-white rounded-[2.5rem] p-6 border border-[#F0EDE8]/50 shadow-sm">
+      <div className="bg-white rounded-[2.5rem] p-6 border border-[#F0EDE8]/50 shadow-sm transition-shadow hover:shadow-md">
         <div className="flex items-center gap-4 mb-6">
-           <div className="w-14 h-14 rounded-2xl bg-orange/5 flex items-center justify-center text-orange">
+           <div className="w-14 h-14 rounded-[1.5rem] bg-orange/10 flex items-center justify-center text-orange border border-orange/20">
               <Zap size={28} />
            </div>
            <div>
@@ -66,27 +67,27 @@ export default function LacakTab({ settings, dailyMacros, streak, weeklyData, we
       </div>
 
       {/* Weekly Insight Section */}
-      <div className="bg-white rounded-[2.5rem] p-6 border border-[#F0EDE8]/50 shadow-sm">
+      <div className="bg-white rounded-[2.5rem] p-6 border border-[#F0EDE8]/50 shadow-sm transition-shadow hover:shadow-md">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <p className="text-[10px] text-[#8A8886] font-black uppercase tracking-widest mb-1">Weekly Streak 🔥</p>
-            <p className="text-3xl font-black text-[#1A1C1E]">{streak} <span className="text-sm font-medium text-[#8A8886]">hari berturut</span></p>
+            <p className="text-[10px] text-[#8A8886] font-black uppercase tracking-[0.2em] mb-1">Weekly Streak</p>
+            <p className="text-3xl font-black text-[#1A1C1E]">{streak} <span className="text-sm font-black text-orange ml-1">hari</span></p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-orange/5 flex items-center justify-center text-orange border border-orange/10">
-            <Flame size={24} />
+          <div className="w-14 h-14 rounded-[1.5rem] bg-orange/10 flex items-center justify-center text-orange border border-orange/20 shadow-inner">
+            <Flame size={28} className="drop-shadow-sm" />
           </div>
         </div>
         
-        <div className="mb-8">
+        <div className="mb-8 p-4 bg-[#F8F7F4] rounded-2xl border border-[#F0EDE8]">
            <div className="flex justify-between items-end mb-4">
-              <p className="text-sm font-black text-[#1A1C1E]">Grafik Kalori Mingguan</p>
-              <p className="text-xs font-bold text-[#8A8886]">Rata-rata: {Math.round(weeklyData.reduce((a: any, d: any) => a + d.calories, 0) / 7)} kcal</p>
+              <p className="text-[11px] font-black uppercase tracking-widest text-[#1A1C1E]">Grafik Kalori Mingguan</p>
+              <p className="text-xs font-black text-orange">Avg: {Math.round(weeklyData.reduce((a: any, d: any) => a + d.calories, 0) / 7)} <span className="text-[9px] text-[#8A8886]">Kcal</span></p>
            </div>
            <WeeklyChart data={weeklyData} goal={goal} />
         </div>
 
         <div className="border-t border-[#F8F7F4] pt-6">
-          <p className="text-[10px] text-[#8A8886] font-black uppercase tracking-widest mb-4">Total Makro Minggu Ini</p>
+          <p className="text-[10px] text-[#8A8886] font-black uppercase tracking-[0.2em] mb-4">Total Makro Minggu Ini</p>
           <div className="space-y-3">
             <MacroBar label="Protein" current={weekMac.protein} target={settings.proteinGoal * 7} color="#22C55E" />
             <MacroBar label="Karbo"   current={weekMac.carbs}   target={settings.carbsGoal * 7}   color="#F59E0B" />

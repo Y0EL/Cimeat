@@ -11,6 +11,7 @@ import HistoryTab from "../components/HistoryTab";
 import HomeTab from "../components/HomeTab";
 import LacakTab from "../components/LacakTab";
 import ProfileTab from "../components/ProfileTab";
+import GoalSetupModal from "../components/GoalSetupModal";
 
 const BACKEND_URL = "http://localhost:8000";
 
@@ -30,15 +31,6 @@ const ANALYZE_STEPS = [
 ];
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
-
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h >= 5 && h < 11) return { sub: "Sudah sarapan?", emoji: "☀️" };
-  if (h >= 11 && h < 15) return { sub: "Waktunya makan siang!", emoji: "🌤️" };
-  if (h >= 15 && h < 18) return { sub: "Hati-hati jajan ya!", emoji: "🌅" };
-  if (h >= 18 && h < 21) return { sub: "Makan malam gimana?", emoji: "🌙" };
-  return { sub: "Jangan lupa minum air ya", emoji: "💧" };
-}
 
 function getCalorieStatus(pct: number) {
   if (pct === 0) return { text: "Belum makan apa-apa. Tubuhmu butuh bahan bakar!", color: "#8A8886", bg: "#F0EDE8" };
@@ -128,12 +120,23 @@ export default function App() {
   }, [analyzing]);
 
   // ── AI Recommendation fetch
-  const fetchRecommendation = async () => {
+  const fetchRecommendation = async (forceRefresh = false) => {
     if (loadingRec) return;
+    const today = new Date().toLocaleDateString("id-ID");
+    const todayH = history.filter(h => h.date === today);
+    const cacheKey = "cimeat_ai_rec_" + today;
+    
+    if (!forceRefresh) {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+         setAiRecommendation(cached);
+         return; // Use cache
+      }
+      if (aiRecommendation) return; // Already fetched
+    }
+    
     setLoadingRec(true);
     try {
-      const today = new Date().toLocaleDateString("id-ID");
-      const todayH = history.filter(h => h.date === today);
       const res = await fetch(`${BACKEND_URL}/recommend`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -141,9 +144,12 @@ export default function App() {
       });
       const data = await res.json();
       setAiRecommendation(data.recommendation);
+      localStorage.setItem(cacheKey, data.recommendation);
     } catch (err) {
       console.error(err);
-      setAiRecommendation("Tetap disiplin jaga targetmu hari ini ya bro! 💪");
+      if (!aiRecommendation) {
+        setAiRecommendation("Tetap disiplin jaga targetmu hari ini ya bro! 💪");
+      }
     } finally {
       setLoadingRec(false);
     }
@@ -182,10 +188,8 @@ export default function App() {
   };
 
   const logout = () => {
-    if (confirm("Yakin mau logout dari Cimeat? 🥺")) {
-      localStorage.removeItem("cimeat_auth");
-      window.location.href = "/login";
-    }
+    localStorage.removeItem("cimeat_auth");
+    window.location.href = "/login";
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -199,8 +203,15 @@ export default function App() {
       const res = await fetch(`${BACKEND_URL}/analyze`, { method: "POST", body: fd });
       if (!res.ok) throw new Error("Gagal menganalisis gambar");
       const data = await res.json();
+      const baseW = data.estimated_weight_g || 150;
       setDraftItem({
         name: data.food_name,
+        baseWeight: baseW,
+        weight: baseW,
+        baseCalories: data.calories,
+        baseProtein: data.macronutrients.protein_g,
+        baseCarbs: data.macronutrients.carbs_g,
+        baseFat: data.macronutrients.fat_g,
         calories: data.calories,
         protein: data.macronutrients.protein_g,
         carbs: data.macronutrients.carbs_g,
@@ -217,6 +228,19 @@ export default function App() {
       setAnalyzing(false);
     }
     e.target.value = "";
+  };
+
+  const handleWeightChange = (newWeight: number) => {
+    if (!draftItem) return;
+    const ratio = newWeight / draftItem.baseWeight;
+    setDraftItem({
+      ...draftItem,
+      weight: newWeight,
+      calories: Math.round(draftItem.baseCalories * ratio),
+      protein: Math.round(draftItem.baseProtein * ratio),
+      carbs: Math.round(draftItem.baseCarbs * ratio),
+      fat: Math.round(draftItem.baseFat * ratio),
+    });
   };
 
   const confirmSave = () => {
@@ -238,7 +262,6 @@ export default function App() {
     { protein: 0, carbs: 0, fat: 0 }
   );
 
-  const greeting = mounted ? getGreeting() : { sub: "Selamat datang!", emoji: "👋" };
   const weeklyData = mounted ? getWeeklyData(history) : Array(7).fill({ date: "", calories: 0, day: "", isToday: false });
   const streak = mounted ? getStreak(history) : 0;
 
@@ -262,7 +285,6 @@ export default function App() {
       {/* ── Header ── */}
       <header className="px-6 pt-10 pb-3 flex justify-between items-start animate-slide-up">
         <div>
-          <p className="text-[#8A8886] text-sm font-medium">{greeting.emoji} {greeting.sub}</p>
           <h1 className="text-2xl font-black text-[#1A1C1E] tracking-tight flex items-center gap-2">
             Cimeat <span className="text-[#FF6B35]">AI</span>
             {analyzing && (
@@ -289,92 +311,95 @@ export default function App() {
       {/* ── Main Content Area ── */}
       <main className="flex-1 overflow-y-auto px-6 pb-32 scrollbar-hide">
         <AnimatePresence mode="wait">
-          {activeTab === "home" && (
-            <HomeTab {...{ consumed, goal, progress, analyzing, randomCal, status, todayHist }}
-              onScan={() => fileInputRef.current?.click()}
-              onSeeAll={() => setActiveTab("history")}
-              onSelectItem={setSelectedItem}
-              onDeleteItem={deleteItem} />
-          )}
-          {activeTab === "lacak" && (
-            <LacakTab {...{ settings, dailyMacros, streak, weeklyData, weekMac, aiRecommendation, loadingRec }} onRefreshRec={fetchRecommendation} />
-          )}
-          {activeTab === "history" && (
-            <HistoryTab {...{ history, grouped }}
-              onSelectItem={setSelectedItem}
-              onDeleteItem={deleteItem}
-              onClear={clearHistory} />
-          )}
-          {activeTab === "profile" && (
-            <ProfileTab userSettings={settings} onUpdateSettings={setSettings} userEmail={userEmail} streak={streak} onLogout={logout} onOpenGoalSetup={() => { setTempSettings(settings); setShowGoalSetup(true); }} />
-          )}
+          <motion.div key={activeTab}
+            initial={{ opacity: 0, y: 20, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.98 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="h-full"
+          >
+            {activeTab === "home" && (
+              <HomeTab {...{ consumed, goal, progress, analyzing, randomCal, status, todayHist }}
+                onScan={() => fileInputRef.current?.click()}
+                onSeeAll={() => setActiveTab("history")}
+                onSelectItem={setSelectedItem}
+                onDeleteItem={deleteItem} />
+            )}
+            {activeTab === "lacak" && (
+              <LacakTab {...{ settings, dailyMacros, streak, weeklyData, weekMac, aiRecommendation, loadingRec }} onRefreshRec={() => fetchRecommendation(true)} />
+            )}
+            {activeTab === "history" && (
+              <HistoryTab {...{ history, grouped }}
+                onSelectItem={setSelectedItem}
+                onDeleteItem={deleteItem}
+                onClear={clearHistory} />
+            )}
+            {activeTab === "profile" && (
+              <ProfileTab userSettings={settings} onUpdateSettings={setSettings} userEmail={userEmail} streak={streak} onLogout={logout} onOpenGoalSetup={() => { setTempSettings(settings); setShowGoalSetup(true); }} />
+            )}
+          </motion.div>
         </AnimatePresence>
       </main>
 
       {/* ── Bottom Nav ── */}
-      <nav className="fixed bottom-8 left-6 right-6 h-20 glass rounded-[2.5rem] flex items-center justify-between px-3 shadow-2xl shadow-charcoal/10 z-40 border-white/40">
-        <NavItem icon={<TrendingUp size={22} />} label="Beranda" active={activeTab === "home"} onClick={() => setActiveTab("home")} />
-        <NavItem icon={<Zap size={22} />} label="Lacak" active={activeTab === "lacak"} onClick={() => setActiveTab("lacak")} />
-        <div className="w-16 h-16 flex items-center justify-center -mt-16 bg-[#F8F7F4] rounded-full">
-          <button onClick={() => fileInputRef.current?.click()}
-            className="w-14 h-14 rounded-full bg-orange shadow-[0_10px_30px_-5px_#FF6B35] flex items-center justify-center active:scale-95 transition-all group">
-            <Plus className="text-white group-hover:rotate-90 transition-transform duration-300" size={28} />
-          </button>
+      <nav className="fixed bottom-8 left-6 right-6 h-20 rounded-[2.5rem] flex items-center justify-between px-2 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] z-40 border border-white/60 bg-white/70 backdrop-blur-xl">
+        <NavItem icon={<TrendingUp size={24} strokeWidth={activeTab === "home" ? 2.5 : 2} />} label="Beranda" active={activeTab === "home"} onClick={() => setActiveTab("home")} />
+        <NavItem icon={<Zap size={24} strokeWidth={activeTab === "lacak" ? 2.5 : 2} />} label="Lacak" active={activeTab === "lacak"} onClick={() => setActiveTab("lacak")} />
+        <div className="w-20 h-20 flex items-center justify-center -mt-16 bg-[#F8F7F4] rounded-full p-2 border-t border-white/50">
+          <motion.button onClick={() => fileInputRef.current?.click()}
+            whileHover={{ scale: 1.05, rotate: 90 }}
+            whileTap={{ scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 400, damping: 15 }}
+            className="w-full h-full rounded-full bg-gradient-to-tr from-[#FF6B35] to-[#FF8C61] shadow-[0_15px_30px_-5px_#FF6B35] flex items-center justify-center relative overflow-hidden group">
+            <Plus className="text-white z-10 drop-shadow-sm" size={32} strokeWidth={3} />
+          </motion.button>
         </div>
-        <NavItem icon={<History size={22} />} label="Riwayat" active={activeTab === "history"} onClick={() => setActiveTab("history")} />
-        <NavItem icon={<User size={22} />} label="Profil" active={activeTab === "profile"} onClick={() => setActiveTab("profile")} />
+        <NavItem icon={<History size={24} strokeWidth={activeTab === "history" ? 2.5 : 2} />} label="Riwayat" active={activeTab === "history"} onClick={() => setActiveTab("history")} />
+        <NavItem icon={<User size={24} strokeWidth={activeTab === "profile" ? 2.5 : 2} />} label="Profil" active={activeTab === "profile"} onClick={() => setActiveTab("profile")} />
       </nav>
 
       {/* ── Modals (Goal, Draft, Detail) ── */}
       <AnimatePresence>
-        {/* Goal Setup Modal */}
+        {/* Goal Setup Full Modal Wizard */}
         {showGoalSetup && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-md">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-sm bg-white rounded-[3rem] p-8 shadow-2xl border border-white">
-              <div className="flex justify-between items-center mb-6">
-                 <div>
-                    <h3 className="text-xl font-black text-[#1A1C1E]">Target Nutrisi</h3>
-                    <p className="text-xs text-[#8A8886] font-medium">Berapa target kalori harianmu?</p>
-                 </div>
-                 <button onClick={() => setShowGoalSetup(false)} className="p-2 bg-[#F8F7F4] rounded-full text-[#8A8886]"><X size={18} /></button>
-              </div>
-              
-              <div className="space-y-8">
-                <GoalSlider label="Kalori" unit="Kcal" value={tempSettings.calorieGoal || 2000} min={1200} max={4000} step={50} onChange={(v: any) => setTempSettings({...tempSettings, calorieGoal: v})} />
-                
-                <div className="grid grid-cols-1 gap-6">
-                  <GoalSlider label="Protein" unit="g" value={tempSettings.proteinGoal || 150} min={50} max={300} step={5} onChange={(v: any) => setTempSettings({...tempSettings, proteinGoal: v})} />
-                  <GoalSlider label="Karbo" unit="g" value={tempSettings.carbsGoal || 250} min={100} max={500} step={10} onChange={(v: any) => setTempSettings({...tempSettings, carbsGoal: v})} />
-                  <GoalSlider label="Lemak" unit="g" value={tempSettings.fatGoal || 65} min={30} max={150} step={5} onChange={(v: any) => setTempSettings({...tempSettings, fatGoal: v})} />
-                </div>
-
-                <button onClick={saveSettings}
-                  className="w-full bg-orange text-white h-16 rounded-[2rem] font-black flex items-center justify-center gap-2 shadow-xl shadow-orange/20 active:scale-95 transition-all">
-                  Simpan Target <Check size={20} />
-                </button>
-              </div>
-            </motion.div>
-          </div>
+          <GoalSetupModal 
+            initialSettings={tempSettings} 
+            onSave={(newSet: any) => { 
+              setSettings(newSet); 
+              localStorage.setItem("cimeat_settings", JSON.stringify(newSet)); 
+              setShowGoalSetup(false); 
+            }} 
+            onClose={() => setShowGoalSetup(false)} 
+          />
         )}
         {/* Draft Modal */}
         {draftItem && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-10 bg-black/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-10 bg-black/40 backdrop-blur-sm" onClick={() => setDraftItem(null)}>
             <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}
-              className="w-full max-w-sm bg-white rounded-[3rem] p-8 shadow-2xl border border-white">
-              <div className="flex justify-between items-center mb-6">
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-white rounded-[3rem] p-7 shadow-2xl border border-white max-h-[90vh] overflow-y-auto scrollbar-hide">
+              <div className="flex justify-between items-center mb-5">
                 <h3 className="text-xl font-black text-[#1A1C1E]">Hasil Scan AI</h3>
                 <button onClick={() => setDraftItem(null)} className="p-2 bg-[#F8F7F4] rounded-full"><X size={18} /></button>
               </div>
               <div className="space-y-6">
                 <div className="flex flex-col gap-4">
-                  <div className="w-full h-48 bg-[#F8F7F4] rounded-[2rem] overflow-hidden border border-[#F0EDE8] shadow-inner">
+                  <div className="w-full h-40 bg-[#F8F7F4] rounded-[2rem] overflow-hidden border border-[#F0EDE8] shadow-inner relative">
                     <img src={draftItem.image} className="w-full h-full object-cover" alt="food" />
+                    <div className="absolute inset-0 ring-1 ring-inset ring-black/5 rounded-[2rem]" />
                   </div>
                   <div className="text-center px-1">
-                    <h4 className="text-xl font-black text-[#1A1C1E] leading-tight mb-2 uppercase tracking-tight">{draftItem.name}</h4>
-                    <p className="text-4xl font-black text-orange">{draftItem.calories}<span className="text-xs ml-1 uppercase">Kilo Kalori</span></p>
+                    <input 
+                      value={draftItem.name}
+                      onChange={(e) => setDraftItem({ ...draftItem, name: e.target.value })}
+                      className="text-xl font-black text-[#1A1C1E] leading-tight mb-1 uppercase tracking-tight bg-transparent text-center border-b border-transparent hover:border-orange/30 focus:border-orange outline-none transition-colors w-full"
+                    />
+                    <p className="text-4xl font-black text-orange">{draftItem.calories}<span className="text-xs ml-1 uppercase">Kcal</span></p>
                   </div>
+                </div>
+
+                <div className="bg-[#F8F7F4] p-5 rounded-[2rem] border border-[#F0EDE8]">
+                  <GoalSlider label="Porsi/Berat" unit="g" value={draftItem.weight} min={10} max={1000} step={10} onChange={handleWeightChange} />
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
@@ -383,7 +408,7 @@ export default function App() {
                   <NutrientBox label="Lemak" val={draftItem.fat} unit="g" color="#EF4444" />
                 </div>
                 <div className="space-y-3 pt-2">
-                  <p className="text-[10px] text-[#8A8886] font-black uppercase tracking-widest pl-1">Pilih Kategori Makan</p>
+                  <p className="text-[10px] text-[#8A8886] font-black uppercase tracking-widest pl-1">Pilih Kategori</p>
                   <div className="flex flex-wrap gap-2">
                     {CATS.map(c => (
                       <button key={c} onClick={() => setDraftItem({ ...draftItem, category: c })}
@@ -405,8 +430,9 @@ export default function App() {
 
         {/* Selected Item Modal */}
         {selectedItem && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-md" onClick={() => setSelectedItem(null)}>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
               className="w-full max-w-sm bg-white rounded-[3.5rem] overflow-hidden shadow-2xl relative">
               <button onClick={() => setSelectedItem(null)}
                 className="absolute top-6 right-6 z-10 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40"><X size={20} /></button>

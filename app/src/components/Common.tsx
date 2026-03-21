@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Cookie, Moon, Sparkles, Sun, SunDim, Trash2 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -23,11 +23,28 @@ export function StatItem({ label, val, unit, color }: any) {
 
 export function NavItem({ icon, label, active, onClick }: any) {
   return (
-    <button onClick={onClick} className={cn("flex-1 flex flex-col items-center justify-center gap-1.5 transition-all duration-300",
+    <button onClick={onClick} className={cn("relative flex-1 flex flex-col items-center justify-center h-full",
       active ? "text-orange" : "text-[#B0ADAA]")}>
-      <div className={cn("p-2.5 rounded-2xl transition-all duration-500", active && "bg-orange/10 scale-110")}>{icon}</div>
-      <span className={cn("text-[10px] font-black uppercase tracking-tighter transition-all duration-300",
-        active ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1")}>{label}</span>
+      <motion.div 
+        animate={{ scale: active ? 1.15 : 1, y: active ? -8 : 0 }}
+        transition={{ type: "spring", stiffness: 500, damping: 20 }}
+        className={cn("p-2.5 rounded-2xl", active && "bg-orange/10 shadow-inner")}
+      >
+        {icon}
+      </motion.div>
+      <AnimatePresence>
+        {active && (
+          <motion.span 
+            initial={{ opacity: 0, y: 10, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.8 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            className="absolute bottom-2.5 text-[9px] font-black uppercase tracking-tighter"
+          >
+            {label}
+          </motion.span>
+        )}
+      </AnimatePresence>
     </button>
   );
 }

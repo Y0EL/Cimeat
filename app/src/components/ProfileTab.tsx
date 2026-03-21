@@ -14,7 +14,7 @@ export default function ProfileTab({ userSettings, onUpdateSettings, userEmail, 
   };
 
   return (
-    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 pb-12">
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 pb-36">
       
       {/* Header Profile */}
       <div className="bg-white rounded-[3rem] p-10 border border-[#F0EDE8]/50 shadow-sm flex flex-col items-center text-center relative overflow-hidden">
