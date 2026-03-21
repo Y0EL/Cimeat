@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F8F7F4;
+  --foreground: #1A1C1E;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-inter), sans-serif;
+  overflow-x: hidden;
+}
+
+/* 2026 Premium Styles */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.8s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+/* Theme override for Tailwind v4 */
+@theme {
+  --color-orange: #FF6B35;
+  --color-green: #22C55E;
+  --color-charcoal: #1A1C1E;
+  --border-radius-4xl: 2rem;
+  --border-radius-5xl: 2.5rem;
+  --font-inter: var(--font-inter);
+}
