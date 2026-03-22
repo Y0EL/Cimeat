@@ -59,6 +59,19 @@ async def get_recommendation(data: RecommendRequest):
         print(f"[API] Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+class TextAnalysisRequest(BaseModel):
+    text: str
+
+@app.post("/analyze-text", response_model=AnalysisResponse)
+async def analyze_text_v2(data: TextAnalysisRequest):
+    try:
+        print(f"[API] Text received for analysis: {data.text}")
+        result = await ai_service.analyze_text_log(data.text)
+        return result
+    except Exception as e:
+        print(f"[API] Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/recipe")
 async def create_recipe(
     images: List[UploadFile] = File(default=[]),

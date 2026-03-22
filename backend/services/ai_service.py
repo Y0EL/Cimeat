@@ -104,7 +104,7 @@ class AIService:
         prompt = f"""
         Bertindaklah sebagai asisten gizi pribadi yang sangat ramah, suportif, dan asik layaknya bestie.
         
-        TARGET HARIAN USER:
+        TARGET HARIAN USER (Program: {settings.get('goal', 'Menjaga Berat Badan')}):
         - Kalori: {settings.get('calorieGoal')} kcal
         - Protein: {settings.get('proteinGoal')}g
         - Karbohidrat: {settings.get('carbsGoal')}g
@@ -119,10 +119,16 @@ class AIService:
         Berikan 2-4 kalimat saran yang sangat personal, singkat, dan praktis menggunakan Bahasa Indonesia yang santai tapi profesional (gunakan gaya bahasa gaul seperti 'lu', 'gue', atau 'bro').
         Fokus pada: 
         1. Tegur kebiasaan buruk atau berikan pujian berdasarkan "DATA HABIT" (contoh: "Gue perhatiin akhir-akhir ini lo kebanyakan jajan nih!").
-        2. Info apa nutrisi yang masih kurang atau sudah kelebihan HARI INI.
-        3. Rekomendasi 1-2 menu lokal Indonesia yang cocok dimakan selanjutnya untuk menyeimbangkan target sisa hari ini.
+        2. Sesuaikan saran dengan program user ({settings.get('goal')}). Kalau diet, saranin porsi/jenis yang low cal. Kalau bulking, saranin yang padat gizi.
+        3. Rekomendasi 1-2 dan alternatifnya menu LOKAL INDONESIA yang AFFORDABLE (murah meriah), NORMAL (bisa ditemuin di warung/kaki lima manapun), dan SEHAT untuk sisa hari ini.
         4. Berikan motivasi singkat.
 
+        ATURAN FORMATTING (SANGAT PENTING):
+        - Gunakan **bold** (dua bintang) untuk nama makanan, angka kalori, atau kata kunci penting lainnya.
+        - JANGAN gunakan tanda kutip (quotation marks seperti "...") untuk membungkus seluruh jawaban Anda. Jawaban harus langsung berupa teks.
+        - Hindari penggunaan simbol markdown lain kecuali **bold**.
+        - JANGAN pakai tanda hubung seperti DASH "—" ataupun "-" untuk estetika!
+        
         Kembalikan HANYA teks saran, tanpa awalan `Ini sarannya:` atau penjelasan lainnya, murni teks paragraf saja!
         """
 
@@ -144,7 +150,10 @@ class AIService:
                 response = await client.post(endpoint, json=payload, headers=headers)
                 response.raise_for_status()
                 result = response.json()
-                return {"recommendation": result.get("response", "").strip()}
+                clean_res = result.get("response", "").strip()
+                # Clean up dashes as requested
+                clean_res = clean_res.replace("—", " ").replace("-", " ")
+                return {"recommendation": clean_res}
             except Exception as e:
                 print(f"[AI Recommendation] Error: {e}")
                 return {"recommendation": "Gagal mendapatkan saran AI. Tetap semangat jalani dietmu ya bro! 💪"}
@@ -259,5 +268,60 @@ class AIService:
             except Exception as e:
                 print(f"[AI Chat Recipe] Error: {e}")
                 return {"reply": "Waduh bro, Chef AI gagal nangkep maksud lo. Coba difrasenya dibedain atau cek koneksi deh! 🥺"}
+
+    async def analyze_text_log(self, text: str):
+        prompt = f"""
+        Bertindaklah sebagai ahli gizi profesional. Ekstrak informasi makanan dari teks berikut dan kembalikan hanya objek JSON murni tanpa markdown.
+        
+        TEKS DARI USER: "{text}"
+        
+        FORMAT JSON:
+        {{
+          "food_name": "string (Contoh: 'Sate Ayam')",
+          "estimated_weight_g": integer (estimasi logis),
+          "calories": integer (estimasi total),
+          "macronutrients": {{
+            "protein_g": integer,
+            "fat_g": integer,
+            "carbs_g": integer
+          }},
+          "health_score": integer (1-100),
+          "confidence_score": float (0.0-1.0)
+        }}
+        
+        PENTING:
+        1. Jika ada beberapa makanan, gabungkan menjadi satu entri utama yang mewakili makanan tersebut.
+        2. Gunakan Bahasa Indonesia.
+        3. Kembalikan HANYA JSON.
+        """
+
+        url = self.cloud_url if self.mode == "cloud" else self.local_url
+        endpoint = f"{url}/api/generate"
+        headers = {}
+        if self.mode == "cloud":
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False,
+            "format": "json"
+        }
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            try:
+                print(f"[AI Text Log] Analyzing: {text[:50]}...")
+                response = await client.post(endpoint, json=payload, headers=headers)
+                response.raise_for_status()
+                result = response.json()
+                raw_response = result.get("response", "").strip()
+                clean_json = re.sub(r'^```json\s*|```\s*$', '', raw_response, flags=re.MULTILINE).strip()
+                data = json.loads(clean_json)
+                if "confidence_score" not in data:
+                    data["confidence_score"] = 0.95
+                return data
+            except Exception as e:
+                print(f"[AI Text Log] Error: {e}")
+                raise e
 
 ai_service = AIService()
