@@ -83,7 +83,7 @@ export default function RecipeModal({ onClose, onGenerate, loading, result, onSa
                         .replace(/^##\s+(.*)$/gm, '<h2 class="text-lg font-black text-[#1A1C1E] mt-5 mb-2">$1</h2>')
                         .replace(/^###\s+(.*)$/gm, '<h3 class="font-bold text-[#1A1C1E] mt-4 mb-1">$1</h3>')
                         .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-[#1A1C1E]">$1</strong>')
-                        .replace(/\*([\s\S]*?)\*/g, '<div class="text-[#8A8886] font-medium italic mb-4 border-l-2 border-orange/30 pl-3 py-1">$1</div>')
+                        .replace(/\*([\s\S]*?)\*/g, '<span class="text-[#8A8886] italic">$1</span>')
                         .replace(/^- (.*)$/gm, '<div class="flex gap-2 mb-1"><span class="text-orange font-black">•</span><span class="flex-1">$1</span></div>')
                         .replace(/^(\d+)\.\s+(.*)$/gm, '<div class="flex gap-2 mb-2"><span class="text-orange font-black">$1.</span><span class="flex-1">$2</span></div>')
                         .replace(/\n\n/g, '<div class="h-3"></div>')

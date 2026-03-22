@@ -4,18 +4,29 @@ import json
 import base64
 import re
 from dotenv import load_dotenv
+from openai import AsyncOpenAI
 
 load_dotenv()
 
 class AIService:
     def __init__(self):
-        self.mode = os.getenv("AI_MODE", "cloud")
+        self.mode = os.getenv("AI_MODE", "openai") # default to openai
         self.local_url = os.getenv("OLLAMA_LOCAL_URL", "http://localhost:11434")
         self.cloud_url = os.getenv("OLLAMA_CLOUD_URL", "https://ollama.com")
         self.api_key = os.getenv("OLLAMA_API_KEY")
-        self.model = os.getenv("DEFAULT_MODEL", "qwen3.5")
+        self.ollama_model = os.getenv("DEFAULT_MODEL", "qwen3.5")
+        
+        # OpenAI Config
+        self.openai_api_key = os.getenv("OPENAI_API_KEY")
+        self.openai_model = os.getenv("OPENAI_MODEL", "gpt-4.1-nano")
+        self.client = AsyncOpenAI(api_key=self.openai_api_key)
 
     async def analyze_image(self, image_bytes: bytes):
+        if self.mode == "openai":
+            return await self._analyze_image_openai(image_bytes)
+        return await self._analyze_image_ollama(image_bytes)
+
+    async def _analyze_image_openai(self, image_bytes: bytes):
         base64_image = base64.b64encode(image_bytes).decode('utf-8')
         
         prompt = """
@@ -35,18 +46,62 @@ class AIService:
         PENTING:
         1. Nama makanan harus Bahasa Indonesia dan singkat.
         2. Jangan memberikan teks penjelasan, pembukaan, atau penutup. 
-        3. Kembalikan HANYA JSON.
+        3. Kembalikan HANYA JSON murni.
+        """
+
+        try:
+            print(f"[AI] Calling OpenAI ({self.openai_model})...")
+            response = await self.client.chat.completions.create(
+                model=self.openai_model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
+                            },
+                        ],
+                    }
+                ],
+                response_format={"type": "json_object"},
+                max_tokens=500
+            )
+            
+            raw_res = response.choices[0].message.content
+            return json.loads(raw_res)
+        except Exception as e:
+            print(f"[AI OpenAI] Error: {e}")
+            raise e
+
+    async def _analyze_image_ollama(self, image_bytes: bytes):
+        base64_image = base64.b64encode(image_bytes).decode('utf-8')
+        
+        prompt = """
+        Bertindaklah sebagai ahli gizi profesional. Analisis gambar makanan ini dan kembalikan hanya objek JSON murni tanpa markdown dengan format berikut:
+        {
+          "food_name": "string (Gunakan Bahasa Indonesia yang sederhana, contoh: 'Nasi Goreng Telur', bukan 'Fried Rice with sunny side up')",
+          "estimated_weight_g": integer (estimasi berat dalam gram),
+          "calories": integer (estimasi kalori yang masuk akal),
+          "macronutrients": {
+            "protein_g": integer (angka bulat atau natural),
+            "fat_g": integer (angka bulat atau natural),
+            "carbs_g": integer (angka bulat atau natural)
+          },
+          "health_score": integer (1-100),
+          "confidence_score": float (0.0 - 1.0)
+        }
         """
 
         url = self.cloud_url if self.mode == "cloud" else self.local_url
         endpoint = f"{url}/api/generate"
-        
         headers = {}
         if self.mode == "cloud":
             headers["Authorization"] = f"Bearer {self.api_key}"
 
         payload = {
-            "model": self.model,
+            "model": self.ollama_model,
             "prompt": prompt,
             "images": [base64_image],
             "stream": False,
@@ -55,292 +110,184 @@ class AIService:
 
         async with httpx.AsyncClient(timeout=120.0) as client:
             try:
-                print(f"[AI] Calling Ollama {self.mode.upper()} ({self.model})...")
+                print(f"[AI] Calling Ollama {self.mode.upper()} ({self.ollama_model})...")
                 response = await client.post(endpoint, json=payload, headers=headers)
                 response.raise_for_status()
-                
                 result = response.json()
                 raw_response = result.get("response", "").strip()
-                
-                if not raw_response:
-                    raise Exception("AI returned an empty response")
-
-                # ✅ MEMBERSIHKAN JSON (Buang markdown backticks kalau ada)
                 clean_json = re.sub(r'^```json\s*|```\s*$', '', raw_response, flags=re.MULTILINE).strip()
-                
-                try:
-                    return json.loads(clean_json)
-                except json.JSONDecodeError:
-                    # Alternatif: Kadang Ollama ngasih response sebagai dict langsung di 'message'
-                    print(f"[AI] Raw failed JSON: {raw_response[:100]}...")
-                    raise Exception("Gagal parse JSON dari AI")
-                    
+                return json.loads(clean_json)
             except Exception as e:
-                print(f"[AI] Error: {e}")
+                print(f"[AI Ollama] Error: {e}")
                 raise e
+
     async def get_recommendation(self, history_today: list, history_past: list, settings: dict):
-        # Hitung total kalori hari ini
+        # Fallback for non-streaming
+        res = ""
+        async for chunk in self.stream_recommendation(history_today, history_past, settings):
+            res += chunk
+        return {"recommendation": res}
+
+    async def stream_recommendation(self, history_today: list, history_past: list, settings: dict):
         total_today = sum([h.get('calories', 0) for h in history_today])
         goal = settings.get('calorieGoal', 2000)
         is_offside = total_today > goal
         gap = total_today - goal
-        
-        # Format data hari ini
         today_summary = "\\n".join([f"- {h.get('name', 'Unknown')} ({h.get('calories', 0)} kcal, P:{h.get('protein', 0)}g, K:{h.get('carbs', 0)}g, L:{h.get('fat', 0)}g)" for h in history_today])
-        
-        # Format histori 7 hari terakhir
         past_summary = ""
         if history_past:
             valid_scores = [h.get('score', 0) for h in history_past if isinstance(h.get('score'), (int, float))]
             avg_score = sum(valid_scores) / len(valid_scores) if valid_scores else 0
-            
             categories = [h.get('category', 'Lainnya') for h in history_past]
             most_common_cat = max(set(categories), key=categories.count) if categories else "Campur"
-            
-            past_summary = f"""
-        DATA HABIT / KEBIASAAN MAKAN (7 HARI TERAKHIR):
-        - Rata-rata Health Score: {round(avg_score, 1)}/100
-        - Kategori Paling Sering: {most_common_cat}
-        - Total makanan / catatan: {len(history_past)} porsi
-            """
+            past_summary = f"DATA HABIT: Rata-rata Health Score: {round(avg_score, 1)}/100. Paling sering: {most_common_cat}."
         else:
-            past_summary = "DATA HABIT: Belum ada cukup data historis yang terkumpul."
+            past_summary = "DATA HABIT: Belum ada data historis."
 
-        # Logika Instruksi khusus jika offside
-        offside_instruction = f"""
-        SITUASI KRITIS: User sudah makan {total_today} kcal, padahal targetnya cuma {goal} kcal (kelebihan {gap} kcal)!
-        TUGAS KHUSUS ANDA:
-        1. JANGAN sarankan makanan atau menu baru apapun untuk sisa hari ini!
-        2. Sarankan untuk **BERHENTI MAKAN** (puasa) untuk sisa hari ini.
-        3. Berikan saran aktivitas fisik ringan atau olahraga (contoh: jalan santai, squat, atau beresin kamar) buat bakar ekstra kalori tadi.
-        4. Sarankan minum air putih lebih banyak biar kenyang lebih lama.
-        5. Beri teguran asik tapi tegas biar user gak kebablasan lagi.
-        """ if is_offside else f"""
-        SITUASI: User baru makan {total_today} kcal dari target {goal} kcal. Masih ada ruang!
-        TUGAS ANDA:
-        1. Rekomendasi 1-2 menu LOKAL INDONESIA yang AFFORDABLE (murah meriah), NORMAL (bisa ditemuin di warung/kaki lima manapun), dan SEHAT untuk sisa hari ini.
-        2. Sesuaikan saran dengan program user ({settings.get('goal')}).
-        """
+        offside_instruction = f"SITUASI KRITIS: User sudah makan {total_today} kcal (kelebihan {gap} kcal). SARAN: BERHENTI MAKAN, sarankan minum air putih & olahraga ringan. Tegur dengan asik tapi tegas." if is_offside else f"SITUASI: User baru makan {total_today} dari target {goal} kcal. REKOMENDASI: 1-2 menu lokal Indonesia yang murah & sehat."
 
         prompt = f"""
-        Bertindaklah sebagai asisten gizi pribadi yang sangat ramah, suportif, dan asik layaknya bestie.
-        
-        TARGET HARIAN USER (Program: {settings.get('goal', 'Menjaga Berat Badan')}):
-        - Kalori: {goal} kcal
-        - Protein: {settings.get('proteinGoal')}g
-        - Karbohidrat: {settings.get('carbsGoal')}g
-        - Lemak: {settings.get('fatGoal')}g
-        
+        Bertindaklah sebagai asisten gizi pribadi yang sangat ramah dan asik (bestie). Jawab dalam Bahasa Indonesia santai (lo, gue, bro, bestie).
+        PROGRAM USER: {settings.get('goal', 'Menjaga Berat Badan')}
+        TARGET: {goal} kcal
         {past_summary}
-        
-        MAKANAN HARI INI:
-        {today_summary if history_today else "Belum ada makanan yang dicatat hari ini."}
-        
+        MAKANAN HARI INI: {today_summary if history_today else "Belum ada."}
         {offside_instruction}
-
-        FOKUS TAMBAHAN: 
-        - Tegur kebiasaan buruk atau berikan pujian berdasarkan "DATA HABIT".
-        - Berikan 2-4 kalimat saran yang sangat personal, singkat, dan praktis menggunakan Bahasa Indonesia yang santai/gaul (lo, gue, bro, bestie).
-        - Berikan motivasi singkat di akhir.
-
-        ATURAN FORMATTING (SANGAT PENTING):
-        - Gunakan **bold** (dua bintang) untuk angka kalori, jenis aktivitas, atau kata kunci penting lainnya.
-        - JANGAN gunakan tanda kutip untuk membungkus seluruh jawaban.
-        - JANGAN pakai tanda hubung seperti DASH "—" ataupun "-" untuk estetika!
-        
-        Kembalikan HANYA teks saran, tanpa awalan `Ini sarannya:` atau penjelasan lainnya, murni teks paragraf saja!
+        ATURAN: Berikan 2-4 kalimat saran singkat. Gunakan **bold** untuk kata kunci. JANGAN pakai dash (-).
         """
 
-        url = self.cloud_url if self.mode == "cloud" else self.local_url
-        endpoint = f"{url}/api/generate"
-        
-        headers = {}
-        if self.mode == "cloud":
-            headers["Authorization"] = f"Bearer {self.api_key}"
-
-        payload = {
-            "model": self.model,
-            "prompt": prompt,
-            "stream": False
-        }
-
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            try:
-                response = await client.post(endpoint, json=payload, headers=headers)
-                response.raise_for_status()
-                result = response.json()
-                clean_res = result.get("response", "").strip()
-                # Clean up dashes as requested
-                clean_res = clean_res.replace("—", " ").replace("-", " ")
-                return {"recommendation": clean_res}
-            except Exception as e:
-                print(f"[AI Recommendation] Error: {e}")
-                return {"recommendation": "Gagal mendapatkan saran AI. Tetap semangat jalani dietmu ya bro! 💪"}
+        if self.mode == "openai":
+            response = await self.client.chat.completions.create(
+                model=self.openai_model,
+                messages=[{"role": "user", "content": prompt}],
+                stream=True,
+                max_tokens=400
+            )
+            async for chunk in response:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content.replace("—", " ").replace("-", " ")
+        else:
+            # Simple wrapper for compatibility if ollama mode
+            yield "Ollama streaming not implemented yet."
 
     async def generate_recipe(self, images_bytes: list, settings: dict, additional_prompt: str = ""):
-        base64_images = [base64.b64encode(img).decode('utf-8') for img in images_bytes] if images_bytes else []
-        
-        user_request_text = f"\nREQUEST TAMBAHAN USER: {additional_prompt}\n(Tolong perhatikan request ini baik-baik!)\n" if additional_prompt.strip() else ""
-        
+        res = ""
+        async for chunk in self.stream_recipe(images_bytes, settings, additional_prompt):
+            res += chunk
+        return {"recipe": res}
+
+    async def stream_recipe(self, images_bytes: list, settings: dict, additional_prompt: str = ""):
+        user_request_text = f"\nREQUEST TAMBAHAN USER: {additional_prompt}" if additional_prompt.strip() else ""
         prompt = f"""
-        Bertindaklah sebagai Chef AI Pribadi dan Ahli Gizi Cimeat.
-        
-        TUJUAN:
-        Buatkan SATU resep masakan lokal Indonesia yang simpel, logis, dan enak menggunakan bahan-bahan utama yang terlihat di foto (boleh ditambah bumbu dapur dasar). 
-        Jika tidak ada foto yang diberikan, buatkan resep bebas sesuai target kalori.
-        Masakan tersebut harus dikira-kira agar porsinya mendekati sisa target nutrisi user hari ini.{user_request_text}
-
-        SISA TARGET MAKRO USER HARI INI:
-        - Kalori: {settings.get('calorieGoal')} kcal
-        - Protein: {settings.get('proteinGoal')}g
-        - Karbohidrat: {settings.get('carbsGoal')}g
-        - Lemak: {settings.get('fatGoal')}g
-
-        FORMAT BALASAN ANDA (Gunakan Markdown):
-        # 🍳 [Nama Masakan]
-        *Teks pembuka singkat yang asik ala anak Jaksel/gaul.*
-
-        **Bahan Tambahan (Asumsi bumbu/bahan lain):**
-        - ...
-
-        **Cara Masak Senggol Bacok:**
-        1. ...
-        2. ...
-        
-        **Estimasi Nutrisi untuk Resep Ini:**
-        - **Kalori:** ... kcal
-        - **Protein:** ... g
-        - **Karbo:** ... g
-        - **Lemak:** ... g
-        
-        HANYA KEMBALIKAN TEKS MARKDOWN TERSEBUT.
+        Tugas: Jadi Chef AI & Ahli Gizi Cimeat. Jawab dalam Bahasa Indonesia gaul (lo, gue, bro, bestie).
+        Buat 1 resep lokal Indonesia yang simpel & enak (sesuaikan foto/target).
+        SISA TARGET: Cal {settings.get('calorieGoal')} kcal, P {settings.get('proteinGoal')}g, K {settings.get('carbsGoal')}g, L {settings.get('fatGoal')}g.{user_request_text}
+        FORMAT: Markdown (# Nama, Deskripsi asik, ## Bahan, ## Cara Masak, ## Nutrisi)
+        JANGAN tulis kata 'Intro' sebagai judul. Langsung tulis deskripsi resepnya aja secara natural.
         """
-
-        url = self.cloud_url if self.mode == "cloud" else self.local_url
-        endpoint = f"{url}/api/generate"
         
-        headers = {}
-        if self.mode == "cloud":
-            headers["Authorization"] = f"Bearer {self.api_key}"
-
-        payload = {
-            "model": self.model,
-            "prompt": prompt,
-            "stream": False
-        }
-        
-        if base64_images:
-            payload["images"] = base64_images
-
-        async with httpx.AsyncClient(timeout=180.0) as client:
-            try:
-                response = await client.post(endpoint, json=payload, headers=headers)
-                response.raise_for_status()
-                result = response.json()
-                return {"recipe": result.get("response", "").strip()}
-            except Exception as e:
-                print(f"[AI Recipe] Error: {e}")
-                return {"recipe": "Waduh bro, AI Chef kita lagi error/sibuk. Coba foto ulang atau muat ulang halamannya ya! 👨‍🍳"}
+        if self.mode == "openai":
+            content = [{"type": "text", "text": prompt}]
+            if images_bytes:
+                for img in images_bytes:
+                    b64 = base64.b64encode(img).decode('utf-8')
+                    content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}})
+            
+            response = await self.client.chat.completions.create(
+                model=self.openai_model,
+                messages=[{"role": "user", "content": content}],
+                stream=True,
+                max_tokens=1000
+            )
+            async for chunk in response:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+        else:
+            yield "Ollama recipe streaming not implemented."
 
     async def chat_recipe(self, recipe_text: str, chat_history: list, new_message: str):
-        history_text = "\n".join([f"{'USER' if msg.get('role') == 'user' else 'AI'}: {msg.get('content')}" for msg in chat_history])
-        
-        prompt = f"""
-        Bertindaklah sebagai Chef AI Pribadi dan Ahli Gizi Cimeat.
-        
-        Konteks: Kita sedang mendiskusikan resep hasil buatan AI sebelumnya:
-        ===== RESEP AWAL =====
-        {recipe_text}
-        ======================
-        
-        RIWAYAT OBROLAN SAAT INI:
-        {history_text if chat_history else "Belum ada riwayat."}
-        
-        PERTANYAAN/PERUBAHAN DARI USER:
-        {new_message}
-        
-        TUGAS ANDA:
-        Balaslah dalam Bahasa Indonesia yang gaul (lo, gue, bro, bestie) tapi tetap informatif dan relevan sebagai asisten dapur. 
-        Jawab pertanyaan, modifikasi cara masak, saran bahan pengganti, atau hitung ulang makro jika diminta. Jangan sebutkan Anda AI, bertindaklah natural seperti teman di dapur.
-        Gunakan gaya Markdown (huruf tebal, poin) jika membalas resep atau instruksi baru.
-        KEMBALIKAN HANYA TEKS BALASAN LANGSUNG (tidak perlu `Saya adalah AI` dll).
+        res = ""
+        async for chunk in self.stream_chat_recipe(recipe_text, chat_history, new_message):
+            res += chunk
+        return {"reply": res}
+
+    async def stream_chat_recipe(self, recipe_text: str, chat_history: list, new_message: str):
+        history_msgs = [{"role": msg.get('role', 'user'), "content": msg.get('content')} for msg in chat_history]
+        system_prompt = f"""
+        Bertindaklah sebagai Chef AI Pribadi dan Ahli Gizi Cimeat yang gaul. 
+        Konteks resep: {recipe_text}
+        Balas dalam Bahasa Indonesia santai (lo, gue, bro, bestie).
         """
-
-        url = self.cloud_url if self.mode == "cloud" else self.local_url
-        endpoint = f"{url}/api/generate"
-        headers = {}
-        if self.mode == "cloud":
-            headers["Authorization"] = f"Bearer {self.api_key}"
-
-        payload = {
-            "model": self.model,
-            "prompt": prompt,
-            "stream": False
-        }
-
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        
+        if self.mode == "openai":
             try:
-                response = await client.post(endpoint, json=payload, headers=headers)
-                response.raise_for_status()
-                result = response.json()
-                return {"reply": result.get("response", "").strip()}
+                msgs = [{"role": "system", "content": system_prompt}] + history_msgs + [{"role": "user", "content": new_message}]
+                response = await self.client.chat.completions.create(
+                    model=self.openai_model,
+                    messages=msgs,
+                    stream=True,
+                    max_tokens=600
+                )
+                async for chunk in response:
+                    if chunk.choices[0].delta.content:
+                        yield chunk.choices[0].delta.content
             except Exception as e:
-                print(f"[AI Chat Recipe] Error: {e}")
-                return {"reply": "Waduh bro, Chef AI gagal nangkep maksud lo. Coba difrasenya dibedain atau cek koneksi deh! 🥺"}
+                yield f"Error: {e}"
+        else:
+            yield "Ollama chat streaming not implemented."
+
+    async def transcribe_audio(self, audio_bytes: bytes):
+        if self.mode != "openai":
+            return "Whisper only works on OpenAI mode."
+        
+        # Save temp file
+        import tempfile
+        from pathlib import Path
+        
+        with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp:
+            tmp.write(audio_bytes)
+            tmp_path = Path(tmp.name)
+        
+        try:
+            with open(tmp_path, "rb") as audio_file:
+                transcript = await self.client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    language="id"
+                )
+                return transcript.text
+        except Exception as e:
+            print(f"[AI Whisper] Error: {e}")
+            return f"Error: {e}"
+        finally:
+            if tmp_path.exists():
+                tmp_path.unlink()
 
     async def analyze_text_log(self, text: str):
         prompt = f"""
-        Bertindaklah sebagai ahli gizi profesional. Ekstrak informasi makanan dari teks berikut dan kembalikan hanya objek JSON murni tanpa markdown.
-        
-        TEKS DARI USER: "{text}"
-        
-        FORMAT JSON:
+        Ahli gizi profesional. Ekstrak makanan dari teks: "{text}"
+        JSON format:
         {{
-          "food_name": "string (Contoh: 'Sate Ayam')",
-          "estimated_weight_g": integer (estimasi logis),
-          "calories": integer (estimasi total),
-          "macronutrients": {{
-            "protein_g": integer,
-            "fat_g": integer,
-            "carbs_g": integer
-          }},
-          "health_score": integer (1-100),
-          "confidence_score": float (0.0-1.0)
+          "food_name": "string",
+          "estimated_weight_g": int,
+          "calories": int,
+          "macronutrients": {{ "protein_g": int, "fat_g": int, "carbs_g": int }},
+          "health_score": 1-100
         }}
-        
-        PENTING:
-        1. Jika ada beberapa makanan, gabungkan menjadi satu entri utama yang mewakili makanan tersebut.
-        2. Gunakan Bahasa Indonesia.
-        3. Kembalikan HANYA JSON.
         """
-
-        url = self.cloud_url if self.mode == "cloud" else self.local_url
-        endpoint = f"{url}/api/generate"
-        headers = {}
-        if self.mode == "cloud":
-            headers["Authorization"] = f"Bearer {self.api_key}"
-
-        payload = {
-            "model": self.model,
-            "prompt": prompt,
-            "stream": False,
-            "format": "json"
-        }
-
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        if self.mode == "openai":
             try:
-                print(f"[AI Text Log] Analyzing: {text[:50]}...")
-                response = await client.post(endpoint, json=payload, headers=headers)
-                response.raise_for_status()
-                result = response.json()
-                raw_response = result.get("response", "").strip()
-                clean_json = re.sub(r'^```json\s*|```\s*$', '', raw_response, flags=re.MULTILINE).strip()
-                data = json.loads(clean_json)
-                if "confidence_score" not in data:
-                    data["confidence_score"] = 0.95
+                response = await self.client.chat.completions.create(
+                    model=self.openai_model,
+                    messages=[{"role": "user", "content": prompt}],
+                    response_format={"type": "json_object"},
+                )
+                data = json.loads(response.choices[0].message.content)
+                if "confidence_score" not in data: data["confidence_score"] = 0.95
                 return data
             except Exception as e:
-                print(f"[AI Text Log] Error: {e}")
+                print(f"[AI Text OpenAI] Error: {e}")
                 raise e
+        return {"error": "Ollama text analysis not ported."}
 
 ai_service = AIService()

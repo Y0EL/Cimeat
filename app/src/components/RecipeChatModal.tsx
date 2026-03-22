@@ -21,13 +21,14 @@ export default function RecipeChatModal({ recipe, onClose, onUpdateRecipe, onDel
     setLoading(true);
 
     const historyCopy = [...(recipe.chat_history || [])];
+    const updatedWithUser = [...historyCopy, { role: "user", content: userMsg }];
     
-    // Add user message to UI optimistic
-    const updatedHistory = [...historyCopy, { role: "user", content: userMsg }];
-    onUpdateRecipe({ ...recipe, chat_history: updatedHistory });
+    // Add assistant placeholder
+    const updatedWithAssistant = [...updatedWithUser, { role: "assistant", content: "" }];
+    onUpdateRecipe({ ...recipe, chat_history: updatedWithAssistant });
 
     try {
-      const res = await fetch("http://localhost:8000/chat_recipe", {
+      const res = await fetch("http://localhost:8000/chat_recipe/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -36,13 +37,27 @@ export default function RecipeChatModal({ recipe, onClose, onUpdateRecipe, onDel
           message: userMsg
         })
       });
-      if (!res.ok) throw new Error("Gagal nanya AI");
-      const data = await res.json();
       
-      const finalHistory = [...updatedHistory, { role: "assistant", content: data.reply }];
-      onUpdateRecipe({ ...recipe, chat_history: finalHistory });
+      if (!res.ok) throw new Error("Gagal nanya AI");
+      
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No reader");
+      
+      const decoder = new TextDecoder();
+      let fullContent = "";
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fullContent += decoder.decode(value, { stream: true });
+        
+        // Update the last message
+        const runningHistory = [...updatedWithUser, { role: "assistant", content: fullContent }];
+        onUpdateRecipe({ ...recipe, chat_history: runningHistory });
+      }
     } catch (err) {
-      const finalHistory = [...updatedHistory, { role: "assistant", content: "Waduh bro, Chef AI gagal nangkep nih. Coba lagi ya!" }];
+      console.error(err);
+      const finalHistory = [...updatedWithUser, { role: "assistant", content: "Waduh bro, Chef AI gagal nangkep nih. Coba lagi ya!" }];
       onUpdateRecipe({ ...recipe, chat_history: finalHistory });
     } finally {
       setLoading(false);

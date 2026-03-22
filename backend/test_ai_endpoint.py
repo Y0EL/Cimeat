@@ -2,7 +2,7 @@ import requests
 import os
 
 # Alamat API lo
-API_URL = "http://localhost:8000/analyze"
+API_URL = "http://127.0.0.1:8000/analyze"
 
 def test_cimeat_ai(image_path):
     print(f"🚀 Testing Cimeat AI with image: {image_path}")
@@ -15,12 +15,13 @@ def test_cimeat_ai(image_path):
     with open(image_path, 'rb') as img:
         files = {'image': (os.path.basename(image_path), img, 'image/jpeg')}
         try:
-            response = requests.post(API_URL, files=files)
+            response = requests.post(API_URL, files=files, timeout=60)
             response.raise_for_status()
             
             print("\n✅ RESPONSE DARI AI (JSON):")
             print("-" * 30)
-            print(response.json())
+            import json
+            print(json.dumps(response.json(), indent=2))
             print("-" * 30)
             
         except requests.exceptions.HTTPError as err:

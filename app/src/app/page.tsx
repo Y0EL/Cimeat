@@ -167,6 +167,22 @@ export default function App() {
     return () => { clearInterval(ci); clearInterval(si); };
   }, [analyzing]);
 
+  // ── Helper for streaming
+  const readStream = async (response: Response, onChunk: (text: string) => void) => {
+    const reader = response.body?.getReader();
+    if (!reader) return "";
+    const decoder = new TextDecoder();
+    let accumulated = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      accumulated += chunk;
+      onChunk(accumulated);
+    }
+    return accumulated;
+  };
+
   // ── AI Recommendation fetch
   const fetchRecommendation = async (forceRefresh = false) => {
     if (loadingRec) return;
@@ -179,21 +195,23 @@ export default function App() {
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         setAiRecommendation(cached);
-        return; // Use cache
+        return;
       }
-      if (aiRecommendation) return; // Already fetched
+      if (aiRecommendation) return;
     }
 
     setLoadingRec(true);
+    setAiRecommendation(""); // Clear for streaming effect
     try {
-      const res = await fetch(`${BACKEND_URL}/recommend`, {
+      const res = await fetch(`${BACKEND_URL}/recommend/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ history_today: todayH, history_past: pastH, settings }),
       });
-      const data = await res.json();
-      setAiRecommendation(data.recommendation);
-      localStorage.setItem(cacheKey, data.recommendation);
+      if (!res.ok) throw new Error("Gagal fetch streaming");
+      
+      const fullText = await readStream(res, (text) => setAiRecommendation(text));
+      localStorage.setItem(cacheKey, fullText);
     } catch (err) {
       console.error(err);
       if (!aiRecommendation) {
@@ -215,7 +233,6 @@ export default function App() {
     setRecipeLoading(true);
     setRecipeResult("");
 
-    // Hitung sisa makro
     const today = new Date().toLocaleDateString("id-ID");
     const todayHist = history.filter(h => h.date === today);
     const consumed = todayHist.reduce((a, c) => ({
@@ -233,23 +250,17 @@ export default function App() {
     const fd = new FormData();
     if (images && images.length > 0) {
       images.forEach(img => fd.append("images", img));
-    } else {
-      // Fast api will complain if "images" is not present, we can append empty blob or handle it in backend.
-      // Easiest is to send an empty blob if backend expects it, or just let backend handle missing field.
     }
     fd.append("calorieGoal", remCal.toString());
     fd.append("proteinGoal", remPro.toString());
     fd.append("carbsGoal", remCar.toString());
     fd.append("fatGoal", remFat.toString());
-    if (additionalPrompt) {
-      fd.append("additionalPrompt", additionalPrompt);
-    }
+    if (additionalPrompt) fd.append("additionalPrompt", additionalPrompt);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/recipe`, { method: "POST", body: fd });
+      const res = await fetch(`${BACKEND_URL}/recipe/stream`, { method: "POST", body: fd });
       if (!res.ok) throw new Error("Gagal membuat resep");
-      const data = await res.json();
-      setRecipeResult(data.recipe);
+      await readStream(res, (text) => setRecipeResult(text));
     } catch (err) {
       setRecipeResult("Maaf bro, Chef AI lagi bermasalah. Coba lagi nanti ya! 👨‍🍳");
     } finally {
@@ -363,16 +374,43 @@ export default function App() {
     e.target.value = "";
   };
 
-  const handleVoiceLog = async (text: string, audioUrl: string | null = null) => {
+  const handleVoiceLog = async (browserText: string, audioDataUrl: string | null = null) => {
     setAnalyzing(true);
+    let finalTranscription = browserText;
+
     try {
+      // 🕵️‍♀️ STEP 1: Whisper Transcription
+      if (audioDataUrl) {
+        try {
+          const resB = await fetch(audioDataUrl);
+          const blob = await resB.blob();
+          const fd = new FormData();
+          fd.append("audio", blob, "voice.webm");
+
+          const transcribeRes = await fetch(`${BACKEND_URL}/transcribe`, {
+            method: "POST",
+            body: fd,
+          });
+          if (transcribeRes.ok) {
+            const tData = await transcribeRes.json();
+            if (tData.text && tData.text.trim().length > 2) {
+              finalTranscription = tData.text; 
+            }
+          }
+        } catch (e) {
+          console.error("Whisper error, falling back to browser text:", e);
+        }
+      }
+
+      // 🧠 STEP 2: Food Analysis
       const res = await fetch(`${BACKEND_URL}/analyze-text`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text: finalTranscription }),
       });
-      if (!res.ok) throw new Error("Gagal menganalisis suara");
+      if (!res.ok) throw new Error("Gagal menganalisis makanan");
       const data = await res.json();
+      
       const baseW = data.estimated_weight_g || 150;
       setDraftItem({
         name: data.food_name,
@@ -390,11 +428,12 @@ export default function App() {
         time: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
         date: new Date().toLocaleDateString("id-ID"),
         image: null,
-        audioLog: audioUrl,
+        audioLog: audioDataUrl,
+        originalText: finalTranscription, // <--- SAVE THIS
         category: "Cemilan",
       });
     } catch (err) {
-      alert("Error: " + (err instanceof Error ? err.message : "Backend mati bro!"));
+      alert("Error: " + (err instanceof Error ? err.message : "Backend error bro!"));
     } finally {
       setAnalyzing(false);
       setShowVoiceOverlay(false);
@@ -613,37 +652,11 @@ export default function App() {
                       <img src={draftItem.image} className="w-full h-full object-cover" alt="food" />
                     ) : (
                       <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-orange/5 to-orange/10 relative overflow-hidden">
-                        {/* Dynamic Waveform Visualizer */}
-                        <div className="flex items-center gap-1.5 h-12">
-                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((bar) => (
-                            <motion.div
-                              key={bar}
-                              animate={{
-                                height: [15, bar % 2 === 0 ? 40 : 25, 15],
-                                opacity: [0.3, 0.7, 0.3]
-                              }}
-                              transition={{
-                                repeat: Infinity,
-                                duration: 1.2,
-                                delay: bar * 0.1,
-                                ease: "easeInOut"
-                              }}
-                              className="w-1.5 rounded-full bg-orange"
-                            />
-                          ))}
-                        </div>
-
-                        {/* Audio Pulse Rings */}
-                        <motion.div
-                          animate={{ scale: [1, 2], opacity: [0.1, 0] }}
-                          transition={{ repeat: Infinity, duration: 2 }}
-                          className="absolute inset-0 m-auto w-20 h-20 border-2 border-orange/20 rounded-full"
-                        />
-
                         {draftItem.audioLog && (
-                          <button
-                            disabled={playingDraft}
-                            onClick={() => {
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (playingDraft) return;
                               setPlayingDraft(true);
                               const audio = new Audio(draftItem.audioLog);
                               audio.onended = () => setPlayingDraft(false);
@@ -651,19 +664,31 @@ export default function App() {
                               audio.play();
                             }}
                             className={cn(
-                              "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg transition-all flex items-center gap-2",
-                              playingDraft ? "bg-orange/20 text-orange cursor-not-allowed" : "bg-orange text-white shadow-orange/20 active:scale-95"
+                              "cursor-pointer active:scale-95 transition-all p-4 rounded-3xl",
+                              playingDraft ? "bg-orange/5" : "hover:bg-orange/5"
                             )}
                           >
-                            {playingDraft ? (
-                              <div className="flex gap-1 mr-1">
-                                {[1, 2, 3].map(bar => (
-                                  <motion.div key={bar} animate={{ scaleY: [1, 2.5, 1] }} transition={{ repeat: Infinity, duration: 0.6, delay: bar * 0.1 }} className="w-0.5 h-2 bg-orange" />
-                                ))}
-                              </div>
-                            ) : null}
-                            {playingDraft ? "Memutar..." : "Dengar Log Suara"}
-                          </button>
+                            <div className="flex items-center gap-1.5 h-10">
+                              {[1, 2, 3, 4, 5, 6, 7, 8].map((bar) => (
+                                <motion.div
+                                  key={bar}
+                                  animate={playingDraft ? {
+                                    height: [10, 30, 10],
+                                    opacity: [0.5, 1, 0.5]
+                                  } : {
+                                    height: [15, 20, 15],
+                                    opacity: 0.3
+                                  }}
+                                  transition={{
+                                    repeat: Infinity,
+                                    duration: 0.8,
+                                    delay: bar * 0.1
+                                  }}
+                                  className="w-1.5 rounded-full bg-orange"
+                                />
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
                     )}
@@ -700,6 +725,12 @@ export default function App() {
                     ))}
                   </div>
                 </div>
+                {draftItem.originalText && (
+                  <div className="bg-[#F8F7F4] p-4 rounded-2xl border border-[#F0EDE8] relative">
+                    <p className="text-[9px] text-[#8A8886] font-black uppercase tracking-widest mb-1.5 opacity-60">Transcript Suara</p>
+                    <p className="text-xs font-medium text-[#1A1C1E] italic leading-relaxed">"{draftItem.originalText}"</p>
+                  </div>
+                )}
                 <button onClick={confirmSave}
                   className="w-full bg-orange text-white h-16 rounded-[2rem] font-black flex items-center justify-center gap-2 group shadow-xl shadow-orange/20 active:scale-95 transition-all">
                   Simpan ke Riwayat <Check size={20} />
@@ -768,6 +799,12 @@ export default function App() {
                     <p className="font-black text-[#1A1C1E]">{selectedItem.date?.split("/").slice(0, 2).join("/")}</p>
                   </div>
                 </div>
+                {selectedItem.originalText && (
+                  <div className="bg-[#F8F7F4] p-5 rounded-3xl border border-[#F0EDE8]">
+                    <p className="text-[10px] text-[#8A8886] font-black uppercase tracking-widest mb-2">Transcript Suara</p>
+                    <p className="text-sm font-medium text-[#1A1C1E] italic leading-relaxed">"{selectedItem.originalText}"</p>
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>

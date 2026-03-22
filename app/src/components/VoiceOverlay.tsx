@@ -103,6 +103,7 @@ export default function VoiceOverlay({ isOpen, onClose, onConfirm, isAnalyzing }
       setTranscript("");
       setFinalTranscript("");
       setStandbyMsg(null);
+      setIsConfirming(false); // Reset lock
       startSession();
     } else {
       stopListening();
@@ -181,18 +182,25 @@ export default function VoiceOverlay({ isOpen, onClose, onConfirm, isAnalyzing }
     isRecordingRef.current = false;
   };
 
+  const [isConfirming, setIsConfirming] = useState(false);
+
   const handleConfirm = async () => {
+    if (isConfirming || isAnalyzing) return;
     const fullText = (finalTranscript + " " + transcript).trim();
     if (!fullText) return;
 
-    // Stop everything first
-    if (recognitionRef.current) recognitionRef.current.stop();
+    setIsConfirming(true);
+
+    // Stop everything immediately
+    if (recognitionRef.current) {
+       try { recognitionRef.current.stop(); } catch(e) {}
+    }
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     if (standbyTimerRef.current) clearTimeout(standbyTimerRef.current);
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     
     // Stop recorder and wait for final chunks
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      // Use a promise to wait for onstop
       const stopPromise = new Promise<string | null>((resolve) => {
         if (!mediaRecorderRef.current) return resolve(null);
         
@@ -220,6 +228,8 @@ export default function VoiceOverlay({ isOpen, onClose, onConfirm, isAnalyzing }
     }
     setIsListening(false);
     isRecordingRef.current = false;
+    // We don't reset isConfirming here because the modal will close anyway, 
+    // or if it stays open for analysis info, we want it to stay 'locked'.
   };
 
   const currentText = (finalTranscript + " " + transcript).trim();
@@ -328,10 +338,11 @@ export default function VoiceOverlay({ isOpen, onClose, onConfirm, isAnalyzing }
                   </button>
                   <button 
                     onClick={handleConfirm}
-                    disabled={!currentText}
+                    disabled={!currentText || isConfirming || isAnalyzing}
                     className="flex-[2] h-16 rounded-[1.5rem] bg-orange text-white font-black tracking-tight active:scale-95 transition-all shadow-xl shadow-orange/30 flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    <Check size={18} /> Konfirmasi
+                    {isConfirming || isAnalyzing ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
+                    {isConfirming ? "Memproses..." : "Konfirmasi"}
                   </button>
                 </motion.div>
               )}
