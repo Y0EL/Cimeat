@@ -6,14 +6,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 // Components
-import { NavItem, NutrientBox, GoalSlider, cn } from "../components/Common";
+import { GoalSlider, NavItem, NutrientBox, cn } from "../components/Common";
+import GoalSetupModal from "../components/GoalSetupModal";
 import HistoryTab from "../components/HistoryTab";
 import HomeTab from "../components/HomeTab";
 import LacakTab from "../components/LacakTab";
 import ProfileTab from "../components/ProfileTab";
-import GoalSetupModal from "../components/GoalSetupModal";
-import RecipeModal from "../components/RecipeModal";
 import RecipeChatModal from "../components/RecipeChatModal";
+import RecipeModal from "../components/RecipeModal";
+import VoiceOverlay from "../components/VoiceOverlay";
 
 const BACKEND_URL = "http://localhost:8000";
 
@@ -55,15 +56,42 @@ function getWeeklyData(history: any[]) {
 }
 
 function getStreak(history: any[]) {
+  if (!history || history.length === 0) return 0;
   let s = 0;
   const curr = new Date();
+
+  // Create a set of unique dates from history for O(1) lookup
+  const loggedDates = new Set(history.map(h => h.date));
+
   for (let i = 0; i < 30; i++) {
     const d = new Date();
     d.setDate(curr.getDate() - i);
     const ds = d.toLocaleDateString("id-ID");
-    if (history.some(h => h.date === ds)) s++; else if (i > 0) break;
+    if (loggedDates.has(ds)) {
+      s++;
+    } else {
+      // Allow current day to be empty without breaking streak if yesterday was logged
+      if (i === 0) continue;
+      break;
+    }
   }
   return s;
+}
+
+function getGenZGreeting(username: string) {
+  const hour = new Date().getHours();
+  const name = username.split(" ")[0];
+  if (hour < 11) return `Pagi ${name}! Ready buat glow-up hari ini? ✨`;
+  if (hour < 15) return `Siang bestie! Jangan lupa lunch yang bergizi ya 🥗`;
+  if (hour < 19) return `Sore bro! Spill dong snack sehat lo hari ini? 🍎`;
+  return `Malam! Tidur yang nyenyak biar metabolisme lo lancar 🌙`;
+}
+
+function getNutriLevel(historyCount: number) {
+  const level = Math.floor(historyCount / 10) + 1;
+  const exp = (historyCount % 10) * 10;
+  const titles = ["Newbie Eater", "Nutri Scout", "Macro Guard", "Calorie Sage", "Fit Legend", "Cimeat Master"];
+  return { level, exp, title: titles[Math.min(level - 1, titles.length - 1)] };
 }
 
 // ── Main Component ───────────────────────────────────────────────────────────
@@ -73,6 +101,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<"home" | "lacak" | "history" | "profile">("home");
   const [userEmail, setUserEmail] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
+  const [showVoiceOverlay, setShowVoiceOverlay] = useState(false);
   const [analyzeStep, setAnalyzeStep] = useState(0);
   const [history, setHistory] = useState<any[]>([]);
   const [aiRecommendation, setAiRecommendation] = useState("");
@@ -88,7 +117,17 @@ export default function App() {
   const [activeRecipeChat, setActiveRecipeChat] = useState<any>(null);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [tempSettings, setTempSettings] = useState(DEFAULT_SETTINGS);
-  const [mounted, setMounted]        = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [playingDraft, setPlayingDraft] = useState(false);
+  const [water, setWater] = useState(0);
+
+  useEffect(() => {
+    if (mounted) {
+      const today = new Date().toLocaleDateString("id-ID");
+      const w = localStorage.getItem("cimeat_water_" + today);
+      if (w) setWater(parseInt(w));
+    }
+  }, [mounted]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Auth Guard & Initial Load
@@ -135,16 +174,16 @@ export default function App() {
     const todayH = history.filter(h => h.date === today);
     const pastH = history.filter(h => h.date !== today).slice(0, 30);
     const cacheKey = "cimeat_ai_rec_" + today;
-    
+
     if (!forceRefresh) {
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
-         setAiRecommendation(cached);
-         return; // Use cache
+        setAiRecommendation(cached);
+        return; // Use cache
       }
       if (aiRecommendation) return; // Already fetched
     }
-    
+
     setLoadingRec(true);
     try {
       const res = await fetch(`${BACKEND_URL}/recommend`, {
@@ -167,7 +206,7 @@ export default function App() {
 
   useEffect(() => {
     if (activeTab === "lacak") {
-       fetchRecommendation();
+      fetchRecommendation();
     }
   }, [activeTab]);
 
@@ -175,11 +214,11 @@ export default function App() {
   const handleGenerateRecipe = async (images: File[], additionalPrompt: string = "") => {
     setRecipeLoading(true);
     setRecipeResult("");
-    
+
     // Hitung sisa makro
     const today = new Date().toLocaleDateString("id-ID");
     const todayHist = history.filter(h => h.date === today);
-    const consumed = todayHist.reduce((a, c) => ({ 
+    const consumed = todayHist.reduce((a, c) => ({
       cal: a.cal + (c.calories || 0),
       pro: a.pro + (c.protein || 0),
       car: a.car + (c.carbs || 0),
@@ -222,7 +261,7 @@ export default function App() {
     const updated = [item, ...history].slice(0, 50);
     setHistory(updated);
     localStorage.setItem("cimeat_history", JSON.stringify(updated));
-    
+
     // Invalidate AI Coach cache so it refreshes with the new food
     const today = new Date().toLocaleDateString("id-ID");
     localStorage.removeItem("cimeat_ai_rec_" + today);
@@ -233,7 +272,7 @@ export default function App() {
     const updated = history.filter(h => h.id !== id);
     setHistory(updated);
     localStorage.setItem("cimeat_history", JSON.stringify(updated));
-    
+
     // Invalidate AI Coach cache
     const today = new Date().toLocaleDateString("id-ID");
     localStorage.removeItem("cimeat_ai_rec_" + today);
@@ -324,6 +363,44 @@ export default function App() {
     e.target.value = "";
   };
 
+  const handleVoiceLog = async (text: string, audioUrl: string | null = null) => {
+    setAnalyzing(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/analyze-text`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error("Gagal menganalisis suara");
+      const data = await res.json();
+      const baseW = data.estimated_weight_g || 150;
+      setDraftItem({
+        name: data.food_name,
+        baseWeight: baseW,
+        weight: baseW,
+        baseCalories: data.calories,
+        baseProtein: data.macronutrients.protein_g,
+        baseCarbs: data.macronutrients.carbs_g,
+        baseFat: data.macronutrients.fat_g,
+        calories: data.calories,
+        protein: data.macronutrients.protein_g,
+        carbs: data.macronutrients.carbs_g,
+        fat: data.macronutrients.fat_g,
+        score: data.health_score,
+        time: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+        date: new Date().toLocaleDateString("id-ID"),
+        image: null,
+        audioLog: audioUrl,
+        category: "Cemilan",
+      });
+    } catch (err) {
+      alert("Error: " + (err instanceof Error ? err.message : "Backend mati bro!"));
+    } finally {
+      setAnalyzing(false);
+      setShowVoiceOverlay(false);
+    }
+  };
+
   const handleWeightChange = (newWeight: number) => {
     if (!draftItem) return;
     const ratio = newWeight / draftItem.baseWeight;
@@ -339,7 +416,8 @@ export default function App() {
 
   const confirmSave = () => {
     if (!draftItem) return;
-    pushHistory({ ...draftItem, id: Date.now().toString() });
+    const newId = mounted && typeof window !== 'undefined' && window.crypto?.randomUUID ? window.crypto.randomUUID() : Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    pushHistory({ ...draftItem, id: newId });
     setDraftItem(null);
   };
 
@@ -378,27 +456,34 @@ export default function App() {
 
       {/* ── Header ── */}
       <header className="px-6 pt-10 pb-3 flex justify-between items-start animate-slide-up">
-        <div>
-          <h1 className="text-2xl font-black text-[#1A1C1E] tracking-tight flex items-center gap-2">
-            Cimeat <span className="text-[#FF6B35]">AI</span>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-0.5">
+            <h1 className="text-2xl font-black text-[#1A1C1E] tracking-tight holographic-text">
+              Cimeat <span className="opacity-80">AI</span>
+            </h1>
+            <div className="bg-orange/10 px-2 py-0.5 rounded-md flex items-center gap-1.5">
+              <Zap size={10} className="text-orange fill-orange" />
+              <span className="text-[10px] text-orange font-black uppercase tracking-widest">{streak} Day Streak</span>
+            </div>
+          </div>
+          <div className="flex flex-col">
+            <p className="text-[13px] font-bold text-[#1A1C1E] opacity-90">{getGenZGreeting(settings.username)}</p>
             {analyzing && (
-              <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }}
-                className="bg-orange/10 px-2 py-0.5 rounded-md flex items-center gap-1.5">
+              <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2 mt-1">
                 <Loader2 size={12} className="text-orange animate-spin" />
-                <span className="text-[10px] text-orange font-bold uppercase tracking-widest">Analyzing</span>
+                <span className="text-[10px] text-orange font-black uppercase tracking-widest">{ANALYZE_STEPS[analyzeStep]}</span>
               </motion.div>
             )}
-          </h1>
-          {analyzing && (
-            <motion.p key={analyzeStep} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-              className="text-xs text-orange font-semibold mt-0.5">
-              {ANALYZE_STEPS[analyzeStep]}
-            </motion.p>
-          )}
+          </div>
         </div>
-        <button onClick={() => setActiveTab("profile")}
-          className="w-10 h-10 rounded-full bg-orange flex items-center justify-center text-white ring-4 ring-orange/10 shadow-lg shadow-orange/20 active:scale-90 transition-transform mt-1">
-          <User size={20} />
+        <button onClick={() => setActiveTab("profile")} className="relative group">
+          <div className="absolute inset-0 bg-orange/20 rounded-full blur-md group-hover:bg-orange/40 transition-all scale-110" />
+          <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-orange to-orange-light flex items-center justify-center text-white ring-2 ring-white shadow-xl relative z-10 active:scale-90 transition-transform">
+            <User size={22} />
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm">
+              <p className="text-[9px] font-black text-orange">{getNutriLevel(history.length).level}</p>
+            </div>
+          </div>
         </button>
       </header>
 
@@ -417,7 +502,11 @@ export default function App() {
                 onScan={() => fileInputRef.current?.click()}
                 onSeeAll={() => setActiveTab("history")}
                 onSelectItem={setSelectedItem}
-                onDeleteItem={deleteItem} />
+                onDeleteItem={deleteItem}
+                onVoiceLogStart={() => setShowVoiceOverlay(true)}
+                water={water}
+                onUpdateWater={(v: number) => setWater(v)}
+              />
             )}
             {activeTab === "lacak" && (
               <LacakTab {...{ settings, dailyMacros, streak, weeklyData, weekMac, aiRecommendation, loadingRec }} onRefreshRec={() => fetchRecommendation(true)} onOpenRecipe={() => { setShowRecipeModal(true); setRecipeResult(""); }} />
@@ -429,9 +518,11 @@ export default function App() {
                 onClear={clearHistory} />
             )}
             {activeTab === "profile" && (
-              <ProfileTab 
+              <ProfileTab
                 userSettings={settings} onUpdateSettings={setSettings} userEmail={userEmail} streak={streak} onLogout={logout} onOpenGoalSetup={() => { setTempSettings(settings); setShowGoalSetup(true); }}
                 savedRecipes={savedRecipes} onOpenChat={(r: any) => setActiveRecipeChat(r)} onDeleteRecipe={deleteSavedRecipe}
+                historyCount={history.length}
+                waterCount={water}
               />
             )}
           </motion.div>
@@ -459,18 +550,20 @@ export default function App() {
       <AnimatePresence>
         {/* Recipe Modal */}
         {showRecipeModal && (
-          <RecipeModal 
-            onClose={() => setShowRecipeModal(false)} 
+          <RecipeModal
+            key="modal-recipe-gen"
+            onClose={() => setShowRecipeModal(false)}
             onGenerate={handleGenerateRecipe}
             loading={recipeLoading}
             result={recipeResult}
             onSave={saveRecipe}
           />
         )}
-        
+
         {/* Recipe Chat Modal */}
         {activeRecipeChat && (
           <RecipeChatModal
+            key={`modal-recipe-chat-${activeRecipeChat.id}`}
             recipe={activeRecipeChat}
             onClose={() => setActiveRecipeChat(null)}
             onUpdateRecipe={updateSavedRecipe}
@@ -478,22 +571,32 @@ export default function App() {
           />
         )}
 
+        {/* Floating Modals */}
+        <VoiceOverlay
+          key="modal-voice-overlay"
+          isOpen={showVoiceOverlay}
+          onClose={() => setShowVoiceOverlay(false)}
+          onConfirm={handleVoiceLog}
+          isAnalyzing={analyzing}
+        />
+
         {/* Goal Setup Full Modal Wizard */}
         {showGoalSetup && (
-          <GoalSetupModal 
-            initialSettings={tempSettings} 
-            onSave={(newSet: any) => { 
-              setSettings(newSet); 
-              localStorage.setItem("cimeat_settings", JSON.stringify(newSet)); 
-              setShowGoalSetup(false); 
-            }} 
-            onClose={() => setShowGoalSetup(false)} 
+          <GoalSetupModal
+            key="modal-goal-setup"
+            initialSettings={tempSettings}
+            onSave={(newSet: any) => {
+              setSettings(newSet);
+              localStorage.setItem("cimeat_settings", JSON.stringify(newSet));
+              setShowGoalSetup(false);
+            }}
+            onClose={() => setShowGoalSetup(false)}
           />
         )}
         {/* Draft Modal */}
         {draftItem && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-10 bg-black/40 backdrop-blur-sm" onClick={() => setDraftItem(null)}>
-            <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}
+          <div key="modal-draft-overlay" className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-10 bg-black/40 backdrop-blur-sm" onClick={() => setDraftItem(null)}>
+            <motion.div key="modal-draft-content" initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
               className="w-full max-w-sm bg-white rounded-[3rem] p-7 shadow-2xl border border-white max-h-[90vh] overflow-y-auto scrollbar-hide">
               <div className="flex justify-between items-center mb-5">
@@ -502,12 +605,72 @@ export default function App() {
               </div>
               <div className="space-y-6">
                 <div className="flex flex-col gap-4">
-                  <div className="w-full h-40 bg-[#F8F7F4] rounded-[2rem] overflow-hidden border border-[#F0EDE8] shadow-inner relative">
-                    <img src={draftItem.image} className="w-full h-full object-cover" alt="food" />
+                  <div className={cn(
+                    "w-full h-40 rounded-[2rem] overflow-hidden border border-[#F0EDE8] shadow-inner relative flex items-center justify-center",
+                    draftItem.image ? "bg-white" : "bg-gradient-to-br from-orange/5 to-orange/10"
+                  )}>
+                    {draftItem.image ? (
+                      <img src={draftItem.image} className="w-full h-full object-cover" alt="food" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-orange/5 to-orange/10 relative overflow-hidden">
+                        {/* Dynamic Waveform Visualizer */}
+                        <div className="flex items-center gap-1.5 h-12">
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((bar) => (
+                            <motion.div
+                              key={bar}
+                              animate={{
+                                height: [15, bar % 2 === 0 ? 40 : 25, 15],
+                                opacity: [0.3, 0.7, 0.3]
+                              }}
+                              transition={{
+                                repeat: Infinity,
+                                duration: 1.2,
+                                delay: bar * 0.1,
+                                ease: "easeInOut"
+                              }}
+                              className="w-1.5 rounded-full bg-orange"
+                            />
+                          ))}
+                        </div>
+
+                        {/* Audio Pulse Rings */}
+                        <motion.div
+                          animate={{ scale: [1, 2], opacity: [0.1, 0] }}
+                          transition={{ repeat: Infinity, duration: 2 }}
+                          className="absolute inset-0 m-auto w-20 h-20 border-2 border-orange/20 rounded-full"
+                        />
+
+                        {draftItem.audioLog && (
+                          <button
+                            disabled={playingDraft}
+                            onClick={() => {
+                              setPlayingDraft(true);
+                              const audio = new Audio(draftItem.audioLog);
+                              audio.onended = () => setPlayingDraft(false);
+                              audio.onerror = () => setPlayingDraft(false);
+                              audio.play();
+                            }}
+                            className={cn(
+                              "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg transition-all flex items-center gap-2",
+                              playingDraft ? "bg-orange/20 text-orange cursor-not-allowed" : "bg-orange text-white shadow-orange/20 active:scale-95"
+                            )}
+                          >
+                            {playingDraft ? (
+                              <div className="flex gap-1 mr-1">
+                                {[1, 2, 3].map(bar => (
+                                  <motion.div key={bar} animate={{ scaleY: [1, 2.5, 1] }} transition={{ repeat: Infinity, duration: 0.6, delay: bar * 0.1 }} className="w-0.5 h-2 bg-orange" />
+                                ))}
+                              </div>
+                            ) : null}
+                            {playingDraft ? "Memutar..." : "Dengar Log Suara"}
+                          </button>
+                        )}
+                      </div>
+                    )}
                     <div className="absolute inset-0 ring-1 ring-inset ring-black/5 rounded-[2rem]" />
                   </div>
                   <div className="text-center px-1">
-                    <input 
+                    <input
                       value={draftItem.name}
                       onChange={(e) => setDraftItem({ ...draftItem, name: e.target.value })}
                       className="text-xl font-black text-[#1A1C1E] leading-tight mb-1 uppercase tracking-tight bg-transparent text-center border-b border-transparent hover:border-orange/30 focus:border-orange outline-none transition-colors w-full"
@@ -554,11 +717,29 @@ export default function App() {
               className="w-full max-w-sm bg-white rounded-[3.5rem] overflow-hidden shadow-2xl relative">
               <button onClick={() => setSelectedItem(null)}
                 className="absolute top-6 right-6 z-10 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40"><X size={20} /></button>
-              <div className="h-64 bg-[#F8F7F4] relative">
-                <img src={selectedItem.image} className="w-full h-full object-cover" alt="food" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-8">
-                  <p className="text-white/70 text-xs font-black uppercase tracking-[0.2em] mb-1">{selectedItem.category}</p>
-                  <h3 className="text-4xl font-black text-white tracking-tight">{selectedItem.name}</h3>
+              <div className={cn("min-h-[16rem] relative flex flex-col items-center justify-center p-8 overflow-hidden",
+                selectedItem.image ? "bg-[#F8F7F4]" : "bg-gradient-to-br from-[#FFAB70] to-[#FF8C61]")}>
+
+                {selectedItem.image ? (
+                  <>
+                    <img src={selectedItem.image} className="absolute inset-0 w-full h-full object-cover" alt="food" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-6 relative z-10 mb-4">
+                  </div>
+                )}
+
+                <div className={cn("relative z-10 w-full flex flex-col pt-4", selectedItem.image ? "h-full justify-end" : "items-center text-center mt-2")}>
+                  <p className={cn("text-xs font-black uppercase tracking-[0.2em] mb-1", selectedItem.image ? "text-white/70" : "text-white/80")}>
+                    {selectedItem.category}
+                  </p>
+                  <h3 className={cn("font-black text-white tracking-tight leading-tight",
+                    selectedItem.name.length > 20 ? "text-2xl" : "text-4xl",
+                    selectedItem.image ? "" : "max-w-[280px]"
+                  )}>
+                    {selectedItem.name}
+                  </h3>
                 </div>
               </div>
               <div className="p-8 space-y-8">

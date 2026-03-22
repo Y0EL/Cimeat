@@ -1,23 +1,15 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { ArrowRight, Camera, Droplets, Plus, Sparkles } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, Camera, Droplets, Mic, Plus, Sparkles, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { HistoryCard } from "./Common";
+import { HistoryCard, cn } from "./Common";
 
-export default function HomeTab({ consumed, goal, progress, analyzing, randomCal, status, todayHist, onScan, onSelectItem, onDeleteItem, onSeeAll }: any) {
-  const [water, setWater] = useState(0);
-
-  useEffect(() => {
-    const today = new Date().toLocaleDateString("id-ID");
-    const w = localStorage.getItem("cimeat_water_" + today);
-    if (w) setWater(parseInt(w));
-  }, []);
-
+export default function HomeTab({ consumed, goal, progress, analyzing, randomCal, status, todayHist, onScan, onSelectItem, onDeleteItem, onSeeAll, onVoiceLogStart, water, onUpdateWater }: any) {
   const addWater = () => {
     const today = new Date().toLocaleDateString("id-ID");
     const nw = Math.min(water + 1, 8); // Max 8 glasses visually
-    setWater(nw);
+    onUpdateWater(nw);
     localStorage.setItem("cimeat_water_" + today, nw.toString());
   };
 
@@ -30,6 +22,7 @@ export default function HomeTab({ consumed, goal, progress, analyzing, randomCal
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0, transition: { duration: 0.5 } }
   };
+
 
   return (
     <motion.div key="home" variants={containerVariants} initial="hidden" animate="show" exit={{ opacity: 0, y: -20 }} className="space-y-4 pb-36">
@@ -83,41 +76,90 @@ export default function HomeTab({ consumed, goal, progress, analyzing, randomCal
         </motion.div>
 
         {/* Water Tracker */}
-        <motion.div variants={itemVariants} className="w-full rounded-[2rem] bg-white border border-[#F0EDE8]/60 p-6 shadow-sm relative overflow-hidden flex items-center justify-between group hover:border-[#3B82F6]/30 transition-colors">
-          <div className="absolute inset-0 bg-[#3B82F6]/5 transition-all duration-1000 ease-in-out" style={{ bottom: 0, top: `${100 - (water / 8) * 100}%` }}>
-            <motion.div animate={{ opacity: [0.3, 0.6, 0.3] }} transition={{ repeat: Infinity, duration: 3 }} className="absolute inset-x-0 top-0 h-1 bg-white/40 shadow-[0_0_10px_#fff]" />
+        <motion.div variants={itemVariants} className="w-full rounded-[2.5rem] bg-white border border-[#F0EDE8]/60 p-6 shadow-sm relative overflow-hidden flex items-center justify-between group hover:border-[#3B82F6]/30 transition-all card-hover">
+          <div className="absolute inset-0 bg-blue-500/5 transition-all duration-1000 ease-in-out" style={{ bottom: 0, top: `${100 - (water / 8) * 100}%` }}>
+            <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 4 }} className="absolute inset-x-0 top-0 h-2 bg-blue-400/20 blur-sm" />
           </div>
           <div className="relative z-10 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-[#EBF5FF] flex items-center justify-center"><Droplets size={22} className="text-[#3B82F6]" /></div>
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center border border-blue-100/50 shadow-inner group-hover:scale-110 transition-transform">
+                <Droplets size={26} className="text-[#3B82F6] fill-[#3B82F6]/20" />
+            </div>
             <div>
-              <p className="text-[10px] text-[#8A8886] font-black uppercase tracking-wider mb-0.5">Air Minum</p>
-              <p className="text-2xl font-black text-[#1A1C1E]">{water}<span className="text-xs text-[#8A8886]">/8 Gelas</span></p>
+              <p className="text-[10px] text-[#8A8886] font-black uppercase tracking-wider mb-0.5">Hydration Vibe</p>
+              <p className="text-2xl font-black text-[#1A1C1E]">{water}<span className="text-xs text-[#8A8886] ml-1">/ 8 glasses</span></p>
             </div>
           </div>
-          <button onClick={addWater} className="relative z-10 w-12 h-12 bg-white hover:bg-[#EBF5FF] text-[#3B82F6] rounded-[1rem] flex items-center justify-center transition-colors shadow-sm active:scale-95 border border-[#F0EDE8]/60">
-            <Plus size={20} strokeWidth={3} />
+          <button onClick={addWater} className="relative z-10 w-12 h-12 bg-white hover:bg-blue-50 text-[#3B82F6] rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-90 border border-blue-100 group-hover:rotate-12">
+            <Plus size={24} strokeWidth={3} />
           </button>
         </motion.div>
       </div>
 
-      {/* Action: Scan Button */}
-      <motion.div variants={itemVariants}>
+      {/* Daily Missions - Gen Z Gamification */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        <div className="flex justify-between items-center px-2 mt-4">
+          <h4 className="text-[11px] font-black text-[#1A1C1E] opacity-50 uppercase tracking-[0.2em]">Daily Missions</h4>
+          <div className="flex items-center gap-1.5 bg-orange/5 px-3 py-1 rounded-full">
+            <Sparkles size={10} className="text-orange" />
+            <span className="text-[9px] font-black text-orange uppercase tracking-tighter">+50 EXP</span>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-3">
+           <div className={cn("p-4 rounded-[2rem] border transition-all flex flex-col gap-3", water >= 8 ? "bg-green-50 border-green-100" : "bg-white border-[#F0EDE8]/60")}>
+              <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-500">
+                <Droplets size={16} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-[#1A1C1E] leading-tight">Water Goal</p>
+                <p className="text-[9px] text-[#8A8886] font-bold">Drink 8 glasses</p>
+              </div>
+              <div className="h-1 w-full bg-[#F0EDE8] rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500 transition-all" style={{ width: `${(water / 8) * 100}%` }} />
+              </div>
+           </div>
+           
+           <div className={cn("p-4 rounded-[2rem] border transition-all flex flex-col gap-3", todayHist.length >= 3 ? "bg-green-50 border-green-100" : "bg-white border-[#F0EDE8]/60")}>
+              <div className="w-8 h-8 rounded-xl bg-orange/10 flex items-center justify-center text-orange">
+                <Camera size={16} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-[#1A1C1E] leading-tight">Meal Snap</p>
+                <p className="text-[9px] text-[#8A8886] font-bold">Log 3 meals today</p>
+              </div>
+              <div className="h-1 w-full bg-[#F0EDE8] rounded-full overflow-hidden">
+                <div className="h-full bg-orange transition-all" style={{ width: `${Math.min((todayHist.length / 3) * 100, 100)}%` }} />
+              </div>
+           </div>
+        </div>
+      </motion.div>
+
+      {/* Action: Scan & Voice Buttons */}
+      <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4">
         <button onClick={onScan}
-          className="w-full relative h-36 rounded-[2.5rem] bg-orange overflow-hidden group active:scale-[0.98] transition-all shadow-xl shadow-orange/20 border border-orange/40">
+          className="relative h-44 rounded-[2.5rem] bg-orange overflow-hidden group active:scale-[0.98] transition-all shadow-xl shadow-orange/20 border border-orange/40">
           <div className="absolute inset-0 bg-gradient-to-br from-orange to-[#FF8C61]" />
           <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 25, ease: "linear" }} className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-2xl" />
           <div className="absolute top-0 right-0 p-6 opacity-20 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-500">
-            <Camera size={130} />
+            <Camera size={100} />
           </div>
-          <div className="relative p-6 h-full flex flex-col justify-end items-start text-left">
-            <div className="w-10 h-10 rounded-[1rem] bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
+          <div className="relative p-7 h-full flex flex-col justify-end items-start text-left">
+            <div className="w-10 h-10 rounded-[1rem] bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner group-hover:rotate-12 transition-transform">
               <Camera className="text-white" size={20} />
             </div>
-            <h3 className="text-xl font-black text-white leading-none mb-1">Mulai Scan AI</h3>
-            <p className="text-white/80 text-xs font-medium">Ambil foto & deteksi nutrisi</p>
+            <h3 className="text-lg font-black text-white leading-none mb-1">Scan AI</h3>
+            <p className="text-white/80 text-[10px] font-medium leading-tight">Foto makanan & deteksi instan</p>
           </div>
-          <div className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform">
-            <ArrowRight className="text-white" size={18} />
+        </button>
+
+        <button onClick={onVoiceLogStart}
+          className="relative h-44 rounded-[2.5rem] bg-white border border-[#F0EDE8]/60 overflow-hidden group active:scale-[0.98] transition-all shadow-sm hover:border-[#FF6B35]/30">
+          <div className="relative p-7 h-full flex flex-col justify-end items-start text-left">
+            <div className="w-10 h-10 rounded-[1rem] flex items-center justify-center mb-3 shadow-inner transition-all bg-[#F8F7F4] text-orange">
+              <Mic size={20} />
+            </div>
+            <h3 className="text-lg font-black text-[#1A1C1E] leading-none mb-1">Voice Log</h3>
+            <p className="text-[#8A8886] text-[10px] font-medium leading-tight">Sebut aja makanan lo langsung</p>
           </div>
         </button>
       </motion.div>
@@ -131,7 +173,7 @@ export default function HomeTab({ consumed, goal, progress, analyzing, randomCal
           </div>
           <div className="space-y-2">
             {todayHist.slice(0, 3).map((item: any, idx: number) => (
-              <motion.div key={item.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.1, type: "spring" }}>
+              <motion.div key={item.id || `today-${idx}`} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.1, type: "spring" }}>
                 <HistoryCard item={item} onClick={() => onSelectItem(item)} onDelete={() => onDeleteItem(item.id)} />
               </motion.div>
             ))}

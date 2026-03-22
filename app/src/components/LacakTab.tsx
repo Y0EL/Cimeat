@@ -40,9 +40,15 @@ export default function LacakTab({ settings, dailyMacros, streak, weeklyData, we
                    <div className="h-4 bg-white/10 rounded-full w-4/6 animate-pulse" />
                 </div>
              ) : (
-                <motion.p initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="text-white/80 text-[15px] leading-relaxed font-medium">
-                   "{aiRecommendation || "Belum ada saran untuk saat ini. Coba catat makananmu dulu bro!"}"
-                </motion.p>
+                 <motion.p 
+                    initial={{ opacity: 0, y: 5 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    className="text-white/80 text-[15px] leading-relaxed font-medium"
+                    dangerouslySetInnerHTML={{ 
+                      __html: (aiRecommendation || "Belum ada saran untuk saat ini. Coba catat makananmu dulu bro!")
+                        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-white">$1</strong>')
+                    }}
+                 />
              )}
           </div>
           

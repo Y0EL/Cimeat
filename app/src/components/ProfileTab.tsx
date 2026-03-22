@@ -1,12 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Edit2, Flame, LogOut, Mail, ShieldCheck, Sparkles, User, UserCheck, BookOpen, Trash2, MessageSquare } from "lucide-react";
+import { Edit2, Flame, LogOut, Mail, ShieldCheck, Sparkles, User, UserCheck, BookOpen, Trash2, MessageSquare, Zap } from "lucide-react";
 import { useState } from "react";
 
-export default function ProfileTab({ userSettings, onUpdateSettings, userEmail, streak, onLogout, onOpenGoalSetup, savedRecipes, onOpenChat, onDeleteRecipe }: any) {
+export default function ProfileTab({ userSettings, onUpdateSettings, userEmail, streak, onLogout, onOpenGoalSetup, savedRecipes, onOpenChat, onDeleteRecipe, historyCount, waterCount }: any) {
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState(userSettings.username || "Cimeat User");
+
+  const levelInfo = getNutriLevel(historyCount || 0);
 
   const saveName = () => {
     onUpdateSettings({ ...userSettings, username: newName });
@@ -18,51 +20,82 @@ export default function ProfileTab({ userSettings, onUpdateSettings, userEmail, 
       
       {/* Header Profile */}
       <div className="bg-white rounded-[3rem] p-10 border border-[#F0EDE8]/50 shadow-sm flex flex-col items-center text-center relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-5">
-           <Sparkles size={120} className="text-orange" />
+        <div className="absolute top-0 right-0 p-8 opacity-10 floating">
+           <Zap size={140} className="text-orange" />
         </div>
         
-        <div className="w-28 h-28 rounded-[2.5rem] bg-orange/10 flex items-center justify-center text-orange border-4 border-white shadow-xl mb-6 relative group overflow-hidden">
+        <div className="w-28 h-28 rounded-[2.5rem] bg-gradient-to-tr from-orange to-orange-light flex items-center justify-center text-white border-4 border-white shadow-xl mb-6 relative group overflow-hidden orbit-glow">
            <User size={56} />
-           <div className="absolute inset-0 bg-orange/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+           <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
               <Edit2 size={24} className="text-white" />
            </div>
         </div>
 
-        {isEditing ? (
-          <div className="flex items-center gap-2 mb-2 w-full max-w-[200px]">
-             <input autoFocus className="text-2xl font-black text-[#1A1C1E] bg-orange/5 border-b-2 border-orange p-1 outline-none w-full text-center"
-               value={newName} onChange={(e) => setNewName(e.target.value)} onBlur={saveName} onKeyDown={(e) => e.key === "Enter" && saveName()} />
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 mb-2 group cursor-pointer" onClick={() => setIsEditing(true)}>
-             <h2 className="text-3xl font-black text-[#1A1C1E] tracking-tight">{userSettings.username || "Cimeat User"}</h2>
-             <Edit2 size={16} className="text-[#8A8886] opacity-0 group-hover:opacity-100 transition-opacity" />
-          </div>
-        )}
-        
-        <div className="flex items-center gap-1.5 bg-orange/5 px-3 py-1 rounded-full border border-orange/10 mb-6 font-bold">
-           <UserCheck size={12} className="text-orange" />
-           <span className="text-[10px] font-black uppercase text-orange">{userEmail || "Cimeat User"}</span>
+        {/* Level & Title */}
+        <div className="relative z-10 mb-4">
+           <div className="bg-orange/5 px-3 py-1 rounded-full border border-orange/10 inline-flex items-center gap-2 mb-2">
+              <Sparkles size={12} className="text-orange" />
+              <span className="text-[10px] font-black uppercase text-orange tracking-widest">{levelInfo.title}</span>
+           </div>
+           
+           {isEditing ? (
+             <div className="flex items-center gap-2 mb-1 w-full max-w-[200px] mx-auto">
+                <input autoFocus className="text-3xl font-black text-[#1A1C1E] bg-orange/5 border-b-2 border-orange p-1 outline-none w-full text-center"
+                  value={newName} onChange={(e) => setNewName(e.target.value)} onBlur={saveName} onKeyDown={(e) => e.key === "Enter" && saveName()} />
+             </div>
+           ) : (
+             <div className="flex items-center justify-center gap-2 group cursor-pointer" onClick={() => setIsEditing(true)}>
+                <h2 className="text-3xl font-black text-[#1A1C1E] tracking-tight">{userSettings.username || "Cimeat User"}</h2>
+                <Edit2 size={16} className="text-[#8A8886] opacity-0 group-hover:opacity-100 transition-opacity" />
+             </div>
+           )}
+           <p className="text-[11px] font-bold text-[#8A8886]">{userEmail || "nutrition.bestie@cimeat.ai"}</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 w-full pt-6 border-t border-[#F8F7F4]">
-           <div className="text-center">
-              <p className="text-[10px] text-[#8A8886] font-black uppercase mb-1">Weekly Streak</p>
-              <div className="flex items-center justify-center gap-1 text-orange">
-                 <Flame size={16} />
-                 <span className="text-xl font-black">{streak} Hari</span>
+        {/* Level XP Bar */}
+        <div className="w-full bg-[#F8F7F4] p-5 rounded-[2.5rem] mt-2 mb-6 border border-[#F0EDE8]/40">
+           <div className="flex justify-between items-end mb-2">
+              <p className="text-[9px] font-black text-[#1A1C1E] uppercase">Level {levelInfo.level}</p>
+              <p className="text-[9px] font-black text-[#8A8886] uppercase">{levelInfo.exp}% to next level</p>
+           </div>
+           <div className="h-2 w-full bg-white rounded-full overflow-hidden border border-[#F0EDE8]/30">
+              <motion.div initial={{ width: 0 }} animate={{ width: `${levelInfo.exp}%` }} transition={{ duration: 1.5, ease: "circOut" }}
+                className="h-full bg-gradient-to-r from-orange to-orange-light rounded-full" />
+           </div>
+        </div>
+
+        <div className="grid grid-cols-[1fr_1px_1fr] gap-0 w-full pt-8 border-t border-[#F8F7F4]">
+           <div className="text-center group active:scale-95 transition-transform cursor-pointer py-2">
+              <p className="text-[10px] text-[#8A8886] font-black uppercase mb-1 tracking-widest">Streak</p>
+              <div className="flex items-center justify-center gap-1.5 text-orange">
+                 <Flame size={18} className="fill-orange/20 animate-pulse" />
+                 <span className="text-2xl font-black">{streak}d</span>
               </div>
            </div>
-           <div className="w-[1px] h-full bg-[#F8F7F4] mx-auto" />
-           <div className="text-center">
-              <p className="text-[10px] text-[#8A8886] font-black uppercase mb-1">Status Akun</p>
-              <div className="flex items-center justify-center gap-1 text-[#22C55E]">
-                 <ShieldCheck size={16} />
-                 <span className="text-xl font-black">Gratis</span>
+           
+           <div className="w-[1px] h-10 bg-[#F0EDE8] self-center" />
+           
+           <div className="text-center group active:scale-95 transition-transform cursor-pointer py-2">
+              <p className="text-[10px] text-[#8A8886] font-black uppercase mb-1 tracking-widest">Logged</p>
+              <div className="flex items-center justify-center gap-1.5 text-[#1A1C1E]">
+                 <div className="p-1 rounded-lg bg-green-50">
+                    <ShieldCheck size={16} className="text-[#22C55E]" />
+                 </div>
+                 <span className="text-2xl font-black">{historyCount}</span>
               </div>
            </div>
         </div>
+      </div>
+
+      {/* Trophy / Achievement Badges */}
+      <div className="space-y-4">
+         <p className="text-[10px] text-[#8A8886] font-black uppercase tracking-widest px-4">Trophy Room</p>
+         <div className="flex gap-4 overflow-x-auto px-4 pb-2 scrollbar-hide">
+             <AchievementBadge icon="🏆" label="Early Bird" active={historyCount >= 5} />
+             <AchievementBadge icon="🔥" label="Hot Streak" active={streak >= 3} />
+             <AchievementBadge icon="💧" label="Water King" active={waterCount >= 8} />
+             <AchievementBadge icon="🥗" label="Clean Eater" active={historyCount >= 10} />
+         </div>
       </div>
 
       {/* Koleksi Resep */}
@@ -73,8 +106,8 @@ export default function ProfileTab({ userSettings, onUpdateSettings, userEmail, 
          
          {savedRecipes?.length > 0 ? (
             <div className="grid grid-cols-1 gap-3 px-1">
-               {savedRecipes.map((recipe: any) => (
-                  <div key={recipe.id} onClick={() => onOpenChat(recipe)} className="bg-white rounded-3xl p-5 border border-[#F0EDE8]/50 shadow-sm flex items-center justify-between group active:scale-[0.98] transition-all cursor-pointer hover:border-orange/30">
+               {savedRecipes.map((recipe: any, idx: number) => (
+                  <div key={recipe.id || `recipe-${idx}`} onClick={() => onOpenChat(recipe)} className="bg-white rounded-3xl p-5 border border-[#F0EDE8]/50 shadow-sm flex items-center justify-between group active:scale-[0.98] transition-all cursor-pointer hover:border-orange/30">
                      <div className="flex-1 min-w-0 pr-3">
                         <h4 className="font-black text-[#1A1C1E] text-sm truncate">{recipe.title}</h4>
                         <div className="flex items-center gap-2 mt-1">
@@ -138,6 +171,28 @@ export default function ProfileTab({ userSettings, onUpdateSettings, userEmail, 
 
     </motion.div>
   );
+}
+
+
+function AchievementBadge({ icon, label, active }: any) {
+  return (
+    <div className={cn("flex-shrink-0 w-24 h-28 rounded-[2rem] p-4 flex flex-col items-center justify-center gap-2 border transition-all",
+      active ? "bg-white border-orange/20 shadow-sm opacity-100" : "bg-[#F8F7F4] border-transparent opacity-30 grayscale")}>
+       <div className="text-2xl mb-1">{icon}</div>
+       <p className="text-[9px] font-black text-center text-[#1A1C1E] leading-tight uppercase">{label}</p>
+    </div>
+  );
+}
+
+function getNutriLevel(historyCount: number) {
+  const level = Math.floor(historyCount / 10) + 1;
+  const exp = (historyCount % 10) * 10;
+  const titles = ["Newbie Eater", "Nutri Scout", "Macro Guard", "Calorie Sage", "Fit Legend", "Cimeat Master"];
+  return { level, exp, title: titles[Math.min(level - 1, titles.length - 1)] };
+}
+
+function cn(...inputs: any[]) {
+  return inputs.filter(Boolean).join(" ");
 }
 
 function ProfileMenu({ icon, label, sub }: any) {

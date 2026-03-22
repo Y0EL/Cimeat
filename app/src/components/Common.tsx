@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Cookie, Moon, Sparkles, Sun, SunDim, Trash2 } from "lucide-react";
+import { Camera, Check, ChevronRight, Cookie, Edit2, Flame, History, Info, Moon, Plus, ShieldCheck, Sparkles, Sun, SunDim, Target, Trash2, TrendingUp, User, X, Zap, Mic } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -56,32 +56,47 @@ export function HistoryCard({ item, onClick, onDelete }: any) {
     item.category === "Makan Malam" ? <Moon size={13} /> : <Cookie size={13} />;
 
   return (
-    <div className="w-full bg-white rounded-[1.8rem] p-4 flex items-center gap-3 shadow-sm border border-[#F0EDE8]/60 hover:border-orange/30 hover:shadow-md transition-all">
-      <button onClick={onClick} className="flex items-center gap-3 flex-1 text-left min-w-0">
-        <div className="w-14 h-14 rounded-2xl bg-[#F8F7F4] overflow-hidden flex-shrink-0 border border-[#F0EDE8]/50">
-          {item.image
-            ? <img src={item.image} className="w-full h-full object-cover" alt="food" />
-            : <div className="w-full h-full flex items-center justify-center"><Sparkles className="text-orange/40" size={22} /></div>}
-        </div>
-        <div className="min-w-0">
-          <h4 className="text-[15px] font-black text-[#1A1C1E] leading-tight mb-1 truncate">{item.name}</h4>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-[#F8F7F4] px-2 py-0.5 rounded-full border border-[#F0EDE8]">
-              <span className="text-orange">{catIcon}</span>
-              <p className="text-[9px] text-[#1A1C1E] font-black uppercase">{item.category?.split(" ")[0]}</p>
-            </div>
-            <div className="w-1 h-1 rounded-full bg-[#E5E2DE]" />
-            <p className="text-[10px] font-bold" style={{ color: scoreColor }}>⭐ {item.score}</p>
+    <div className="w-full bg-white rounded-[2rem] p-4 flex items-center gap-3 shadow-sm border border-[#F0EDE8]/60 hover:border-orange/30 hover:shadow-lg transition-all active:scale-[0.98] card-hover group cursor-pointer" onClick={onClick}>
+      <div className="w-16 h-16 rounded-[1.2rem] bg-[#F8F7F4] overflow-hidden flex-shrink-0 border border-[#F0EDE8]/50 relative flex items-center justify-center">
+        {item.image ? (
+          <img src={item.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="food" />
+        ) : (
+          <div className="relative flex items-center justify-center">
+             <Mic className="text-orange/60" size={24} />
+             {item.audioLog && (
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-orange rounded-full flex items-center justify-center text-white border-2 border-white shadow-sm">
+                   <div className="w-0 h-0 border-t-[3px] border-t-transparent border-l-[5px] border-l-white border-b-[3px] border-b-transparent ml-0.5" />
+                </div>
+             )}
+          </div>
+        )}
+        <div className="absolute inset-0 ring-1 ring-inset ring-black/5 rounded-[1.2rem]" />
+      </div>
+      
+      <div className="flex-1 min-w-0">
+        <h4 className="text-[16px] font-black text-[#1A1C1E] leading-tight mb-1 truncate tracking-tight">{item.name}</h4>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-[#F8F7F4] px-2.5 py-0.5 rounded-full border border-[#F0EDE8]">
+            <span className="text-orange">{catIcon}</span>
+            <p className="text-[9px] text-[#1A1C1E] font-black uppercase tracking-tighter">{item.category}</p>
+          </div>
+          <div className="w-1 h-1 rounded-full bg-[#E5E2DE]" />
+          <div className="flex items-center gap-1">
+             <span className="text-[10px]">⭐</span>
+             <p className="text-[10px] font-black" style={{ color: scoreColor }}>{item.score}</p>
           </div>
         </div>
-      </button>
-      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-        <p className="text-xl font-black text-orange leading-none">{item.calories}<span className="text-[9px] ml-0.5 uppercase">Kcal</span></p>
-        <p className="text-[9px] text-[#8A8886] font-bold uppercase">{item.time}</p>
-        <button onClick={e => { e.stopPropagation(); onDelete(); }}
-          className="p-1.5 rounded-full text-[#EF4444] bg-red-50 active:scale-90 transition-transform mt-0.5">
-          <Trash2 size={12} />
-        </button>
+      </div>
+
+      <div className="flex flex-col items-end gap-1 flex-shrink-0 pl-2">
+        <p className="text-2xl font-black text-[#1A1C1E] leading-none tracking-tighter">{item.calories}<span className="text-[10px] ml-0.5 text-[#8A8886] font-bold">kcal</span></p>
+        <div className="flex items-center gap-1.5 mt-1">
+          <p className="text-[9px] text-[#8A8886] font-bold uppercase tracking-tighter">{item.time}</p>
+          <button onClick={e => { e.stopPropagation(); onDelete(); }}
+            className="p-1.5 rounded-full text-[#EF4444] bg-red-50 hover:bg-red-500 hover:text-white transition-all active:scale-90 ml-1">
+            <Trash2 size={12} />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -104,11 +119,16 @@ export function MacroBar({ label, current, target, color }: any) {
 
 export function NutrientBox({ label, val, unit, color }: any) {
   return (
-    <div className="bg-[#F8F7F4] p-3 rounded-2xl border border-[#F0EDE8] text-center">
-      <p className="text-[8px] font-black text-[#8A8886] uppercase tracking-widest mb-1">{label}</p>
-      <p className="text-base font-black text-[#1A1C1E] leading-none">{Math.round(val)}<span className="text-[9px] ml-0.5 text-[#8A8886] font-bold">{unit}</span></p>
-      <div className="h-1 w-5 mx-auto mt-2 rounded-full overflow-hidden" style={{ backgroundColor: "#E5E2DE" }}>
-        <div className="h-full w-3/5 rounded-full" style={{ backgroundColor: color }} />
+    <div className="bg-white p-4 rounded-3xl border border-[#F0EDE8]/60 text-center shadow-sm card-hover flex flex-col items-center">
+      <p className="text-[9px] font-black text-[#8A8886] uppercase tracking-[0.15em] mb-2">{label}</p>
+      <p className="text-xl font-black text-[#1A1C1E] leading-none mb-3">{Math.round(val)}<span className="text-[10px] ml-1 text-[#8A8886] font-bold uppercase">{unit}</span></p>
+      <div className="h-1.5 w-full bg-[#F8F7F4] rounded-full overflow-hidden border border-[#F0EDE8]/20">
+        <motion.div 
+           initial={{ width: 0 }} 
+           animate={{ width: "70%" }} 
+           className="h-full rounded-full" 
+           style={{ backgroundColor: color }} 
+        />
       </div>
     </div>
   );
