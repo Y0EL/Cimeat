@@ -78,8 +78,13 @@ class AIService:
             except Exception as e:
                 print(f"[AI] Error: {e}")
                 raise e
-
     async def get_recommendation(self, history_today: list, history_past: list, settings: dict):
+        # Hitung total kalori hari ini
+        total_today = sum([h.get('calories', 0) for h in history_today])
+        goal = settings.get('calorieGoal', 2000)
+        is_offside = total_today > goal
+        gap = total_today - goal
+        
         # Format data hari ini
         today_summary = "\\n".join([f"- {h.get('name', 'Unknown')} ({h.get('calories', 0)} kcal, P:{h.get('protein', 0)}g, K:{h.get('carbs', 0)}g, L:{h.get('fat', 0)}g)" for h in history_today])
         
@@ -101,11 +106,27 @@ class AIService:
         else:
             past_summary = "DATA HABIT: Belum ada cukup data historis yang terkumpul."
 
+        # Logika Instruksi khusus jika offside
+        offside_instruction = f"""
+        SITUASI KRITIS: User sudah makan {total_today} kcal, padahal targetnya cuma {goal} kcal (kelebihan {gap} kcal)!
+        TUGAS KHUSUS ANDA:
+        1. JANGAN sarankan makanan atau menu baru apapun untuk sisa hari ini!
+        2. Sarankan untuk **BERHENTI MAKAN** (puasa) untuk sisa hari ini.
+        3. Berikan saran aktivitas fisik ringan atau olahraga (contoh: jalan santai, squat, atau beresin kamar) buat bakar ekstra kalori tadi.
+        4. Sarankan minum air putih lebih banyak biar kenyang lebih lama.
+        5. Beri teguran asik tapi tegas biar user gak kebablasan lagi.
+        """ if is_offside else f"""
+        SITUASI: User baru makan {total_today} kcal dari target {goal} kcal. Masih ada ruang!
+        TUGAS ANDA:
+        1. Rekomendasi 1-2 menu LOKAL INDONESIA yang AFFORDABLE (murah meriah), NORMAL (bisa ditemuin di warung/kaki lima manapun), dan SEHAT untuk sisa hari ini.
+        2. Sesuaikan saran dengan program user ({settings.get('goal')}).
+        """
+
         prompt = f"""
         Bertindaklah sebagai asisten gizi pribadi yang sangat ramah, suportif, dan asik layaknya bestie.
         
         TARGET HARIAN USER (Program: {settings.get('goal', 'Menjaga Berat Badan')}):
-        - Kalori: {settings.get('calorieGoal')} kcal
+        - Kalori: {goal} kcal
         - Protein: {settings.get('proteinGoal')}g
         - Karbohidrat: {settings.get('carbsGoal')}g
         - Lemak: {settings.get('fatGoal')}g
@@ -115,18 +136,16 @@ class AIService:
         MAKANAN HARI INI:
         {today_summary if history_today else "Belum ada makanan yang dicatat hari ini."}
         
-        TUGAS ANDA:
-        Berikan 2-4 kalimat saran yang sangat personal, singkat, dan praktis menggunakan Bahasa Indonesia yang santai tapi profesional (gunakan gaya bahasa gaul seperti 'lu', 'gue', atau 'bro').
-        Fokus pada: 
-        1. Tegur kebiasaan buruk atau berikan pujian berdasarkan "DATA HABIT" (contoh: "Gue perhatiin akhir-akhir ini lo kebanyakan jajan nih!").
-        2. Sesuaikan saran dengan program user ({settings.get('goal')}). Kalau diet, saranin porsi/jenis yang low cal. Kalau bulking, saranin yang padat gizi.
-        3. Rekomendasi 1-2 dan alternatifnya menu LOKAL INDONESIA yang AFFORDABLE (murah meriah), NORMAL (bisa ditemuin di warung/kaki lima manapun), dan SEHAT untuk sisa hari ini.
-        4. Berikan motivasi singkat.
+        {offside_instruction}
+
+        FOKUS TAMBAHAN: 
+        - Tegur kebiasaan buruk atau berikan pujian berdasarkan "DATA HABIT".
+        - Berikan 2-4 kalimat saran yang sangat personal, singkat, dan praktis menggunakan Bahasa Indonesia yang santai/gaul (lo, gue, bro, bestie).
+        - Berikan motivasi singkat di akhir.
 
         ATURAN FORMATTING (SANGAT PENTING):
-        - Gunakan **bold** (dua bintang) untuk nama makanan, angka kalori, atau kata kunci penting lainnya.
-        - JANGAN gunakan tanda kutip (quotation marks seperti "...") untuk membungkus seluruh jawaban Anda. Jawaban harus langsung berupa teks.
-        - Hindari penggunaan simbol markdown lain kecuali **bold**.
+        - Gunakan **bold** (dua bintang) untuk angka kalori, jenis aktivitas, atau kata kunci penting lainnya.
+        - JANGAN gunakan tanda kutip untuk membungkus seluruh jawaban.
         - JANGAN pakai tanda hubung seperti DASH "—" ataupun "-" untuk estetika!
         
         Kembalikan HANYA teks saran, tanpa awalan `Ini sarannya:` atau penjelasan lainnya, murni teks paragraf saja!
