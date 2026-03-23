@@ -1,10 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Edit2, Flame, LogOut, Mail, ShieldCheck, Sparkles, User, UserCheck, BookOpen, Trash2, MessageSquare, Zap } from "lucide-react";
+import { Edit2, Flame, LogOut, Mail, ShieldCheck, Sparkles, User, UserCheck, BookOpen, Trash2, MessageSquare, Zap, Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 
-export default function ProfileTab({ userSettings, onUpdateSettings, userEmail, streak, onLogout, onOpenGoalSetup, savedRecipes, onOpenChat, onDeleteRecipe, historyCount, waterCount }: any) {
+export default function ProfileTab({ userSettings, onUpdateSettings, userEmail, streak, onLogout, onOpenGoalSetup, savedRecipes, onOpenChat, onDeleteRecipe, historyCount, waterCount, userLocation }: any) {
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState(userSettings.username || "Cimeat User");
 
@@ -139,6 +139,41 @@ export default function ProfileTab({ userSettings, onUpdateSettings, userEmail, 
          
          <div onClick={() => onOpenGoalSetup()}>
             <ProfileMenu icon={<Sparkles size={20} />} label="Target Nutrisi" sub="Atur ulang target harianmu" />
+         </div>
+
+         {/* New Location & Preference Display */}
+         <div className="bg-white rounded-[2rem] p-6 border border-[#F0EDE8]/50 shadow-sm flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+               <div className="flex items-center gap-4">
+                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-all", userSettings.useLocation ? "bg-orange/10 text-orange" : "bg-[#F8F7F4] text-[#8A8886]")}>
+                     <ShieldCheck size={22} />
+                  </div>
+                  <div>
+                      <h4 className="font-black text-[#1A1C1E]">Status Lokasi</h4>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs text-[#8A8886]">{userSettings.useLocation ? "Aktif - AI bisa sarankan resto" : "Nonaktif"}</p>
+                      </div>
+                   </div>
+               </div>
+               <button onClick={() => onUpdateSettings({...userSettings, useLocation: !userSettings.useLocation})} className={cn("w-10 h-5 rounded-full relative transition-all", userSettings.useLocation ? "bg-orange" : "bg-[#F0EDE8]")}>
+                  <motion.div initial={{ x: 2 }} animate={{ x: userSettings.useLocation ? 22 : 2 }} className="absolute top-1 left-0 w-3 h-3 bg-white rounded-full shadow-sm" />
+               </button>
+            </div>
+            
+            <div className="h-[1px] bg-[#F0EDE8] w-full" />
+            
+            <div className="flex items-center justify-between">
+               <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#F8F7F4] flex items-center justify-center text-[#1A1C1E]">
+                     <Flame size={22} className={userSettings.diningPreference === 'healthy' ? "text-green-500" : userSettings.diningPreference === 'affordable' ? "text-orange" : "text-blue-500"} />
+                  </div>
+                  <div>
+                     <h4 className="font-black text-[#1A1C1E]">Preferensi Makan</h4>
+                     <p className="text-xs text-[#8A8886] capitalize">{userSettings.diningPreference === 'balanced' ? 'Seimbang' : userSettings.diningPreference === 'healthy' ? 'Sehat & Hijau' : 'Hemat & Affordable'}</p>
+                  </div>
+               </div>
+               <button onClick={() => onOpenGoalSetup()} className="text-[10px] font-black text-orange uppercase tracking-widest bg-orange/5 px-3 py-1 rounded-full border border-orange/10">Ubah</button>
+            </div>
          </div>
          
          <ProfileMenu icon={<Mail size={20} />} label="Email Saya" sub={userEmail || "cimeat.user@example.com"} />

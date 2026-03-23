@@ -19,11 +19,13 @@ import VoiceOverlay from "../components/VoiceOverlay";
 const BACKEND_URL = "http://localhost:8000";
 
 const DEFAULT_SETTINGS = {
-  username: "Cimeat User",
+  username: "Cimeat",
   calorieGoal: 2000,
   proteinGoal: 150,
   carbsGoal: 250,
   fatGoal: 65,
+  useLocation: false,
+  diningPreference: "balanced", // "balanced", "affordable", "healthy"
 };
 
 const ANALYZE_STEPS = [
@@ -120,6 +122,7 @@ export default function App() {
   const [mounted, setMounted] = useState(false);
   const [playingDraft, setPlayingDraft] = useState(false);
   const [water, setWater] = useState(0);
+  const [userLocation, setUserLocation] = useState<any>(null);
 
   useEffect(() => {
     if (mounted) {
@@ -202,14 +205,27 @@ export default function App() {
 
     setLoadingRec(true);
     setAiRecommendation(""); // Clear for streaming effect
+
+    let locData = userLocation;
+    if (settings.useLocation && !locData) {
+      locData = await updateLocation();
+    }
+
     try {
       const res = await fetch(`${BACKEND_URL}/recommend/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ history_today: todayH, history_past: pastH, settings }),
+        body: JSON.stringify({
+          history_today: todayH,
+          history_past: pastH,
+          settings,
+          lat: locData.lat,
+          lng: locData.lng,
+          diningPreference: settings.diningPreference
+        }),
       });
       if (!res.ok) throw new Error("Gagal fetch streaming");
-      
+
       const fullText = await readStream(res, (text) => setAiRecommendation(text));
       localStorage.setItem(cacheKey, fullText);
     } catch (err) {
@@ -222,9 +238,30 @@ export default function App() {
     }
   };
 
+  const updateLocation = async () => {
+    if (!navigator.geolocation) return null;
+    try {
+      const pos = await new Promise<GeolocationPosition>((res, rej) => {
+        navigator.geolocation.getCurrentPosition(res, rej, {
+          timeout: 30000,
+          enableHighAccuracy: true
+        });
+      });
+      const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      setUserLocation(coords);
+      return coords;
+    } catch (e: any) {
+      console.warn("Location capture failed", e);
+      return null;
+    }
+  };
+
   useEffect(() => {
     if (activeTab === "lacak") {
       fetchRecommendation();
+    }
+    if (settings.useLocation && !userLocation) {
+      updateLocation();
     }
   }, [activeTab]);
 
@@ -394,7 +431,7 @@ export default function App() {
           if (transcribeRes.ok) {
             const tData = await transcribeRes.json();
             if (tData.text && tData.text.trim().length > 2) {
-              finalTranscription = tData.text; 
+              finalTranscription = tData.text;
             }
           }
         } catch (e) {
@@ -410,7 +447,7 @@ export default function App() {
       });
       if (!res.ok) throw new Error("Gagal menganalisis makanan");
       const data = await res.json();
-      
+
       const baseW = data.estimated_weight_g || 150;
       setDraftItem({
         name: data.food_name,
@@ -558,10 +595,17 @@ export default function App() {
             )}
             {activeTab === "profile" && (
               <ProfileTab
-                userSettings={settings} onUpdateSettings={setSettings} userEmail={userEmail} streak={streak} onLogout={logout} onOpenGoalSetup={() => { setTempSettings(settings); setShowGoalSetup(true); }}
+                userSettings={settings} onUpdateSettings={(s: any) => { 
+                  setSettings(s); 
+                  localStorage.setItem("cimeat_settings", JSON.stringify(s)); 
+                  if (s.useLocation && !userLocation) updateLocation();
+                  if (!s.useLocation) setUserLocation(null);
+                }} 
+                userEmail={userEmail} streak={streak} onLogout={logout} onOpenGoalSetup={() => { setTempSettings(settings); setShowGoalSetup(true); }}
                 savedRecipes={savedRecipes} onOpenChat={(r: any) => setActiveRecipeChat(r)} onDeleteRecipe={deleteSavedRecipe}
                 historyCount={history.length}
                 waterCount={water}
+                userLocation={userLocation}
               />
             )}
           </motion.div>
@@ -653,7 +697,7 @@ export default function App() {
                     ) : (
                       <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-orange/5 to-orange/10 relative overflow-hidden">
                         {draftItem.audioLog && (
-                          <div 
+                          <div
                             onClick={(e) => {
                               e.stopPropagation();
                               if (playingDraft) return;

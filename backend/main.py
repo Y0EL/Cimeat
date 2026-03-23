@@ -45,16 +45,26 @@ async def analyze_food(image: UploadFile = File(...)):
         print(f"[API] Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+from typing import List, Optional
+from services.places_service import places_service
+
 class RecommendRequest(BaseModel):
     history_today: list
     history_past: list = []
     settings: dict
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    diningPreference: Optional[str] = "balanced" # "balanced", "affordable", "healthy"
 
 @app.post("/recommend")
 async def get_recommendation(data: RecommendRequest):
     try:
-        print(f"[API] Generating recommendation (sync)...")
-        result = await ai_service.get_recommendation(data.history_today, data.history_past, data.settings)
+        nearby = []
+        if data.lat and data.lng:
+            nearby = await places_service.search_nearby_food(data.lat, data.lng, data.diningPreference)
+        
+        print(f"[API] Generating recommendation (sync)... Nearby: {len(nearby)} found")
+        result = await ai_service.get_recommendation(data.history_today, data.history_past, data.settings, nearby_places=nearby)
         return result
     except Exception as e:
         print(f"[API] Error: {e}")
@@ -62,9 +72,13 @@ async def get_recommendation(data: RecommendRequest):
 
 @app.post("/recommend/stream")
 async def get_recommendation_stream(data: RecommendRequest):
-    print(f"[API] Streaming recommendation...")
+    nearby = []
+    if data.lat and data.lng:
+        nearby = await places_service.search_nearby_food(data.lat, data.lng, data.diningPreference)
+        
+    print(f"[API] Streaming recommendation... Nearby: {len(nearby)} found")
     return StreamingResponse(
-        ai_service.stream_recommendation(data.history_today, data.history_past, data.settings),
+        ai_service.stream_recommendation(data.history_today, data.history_past, data.settings, nearby_places=nearby),
         media_type="text/plain"
     )
 

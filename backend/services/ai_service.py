@@ -121,14 +121,14 @@ class AIService:
                 print(f"[AI Ollama] Error: {e}")
                 raise e
 
-    async def get_recommendation(self, history_today: list, history_past: list, settings: dict):
+    async def get_recommendation(self, history_today: list, history_past: list, settings: dict, nearby_places: list = []):
         # Fallback for non-streaming
         res = ""
-        async for chunk in self.stream_recommendation(history_today, history_past, settings):
+        async for chunk in self.stream_recommendation(history_today, history_past, settings, nearby_places):
             res += chunk
         return {"recommendation": res}
 
-    async def stream_recommendation(self, history_today: list, history_past: list, settings: dict):
+    async def stream_recommendation(self, history_today: list, history_past: list, settings: dict, nearby_places: list = []):
         total_today = sum([h.get('calories', 0) for h in history_today])
         goal = settings.get('calorieGoal', 2000)
         is_offside = total_today > goal
@@ -146,6 +146,13 @@ class AIService:
 
         offside_instruction = f"SITUASI KRITIS: User sudah makan {total_today} kcal (kelebihan {gap} kcal). SARAN: BERHENTI MAKAN, sarankan minum air putih & olahraga ringan. Tegur dengan asik tapi tegas." if is_offside else f"SITUASI: User baru makan {total_today} dari target {goal} kcal. REKOMENDASI: 1-2 menu lokal Indonesia yang murah & sehat."
 
+        nearby_info = ""
+        if nearby_places:
+            places_str = ", ".join([f"{p['name']} ({p['price_level']})" for p in nearby_places])
+            nearby_info = f"TEMPAT MAKAN DEKAT USER: {places_str}. Sarankan satu porsi yang paling cocok di salah satu tempat ini."
+        else:
+            nearby_info = "LOKASI MATI/TIDAK ADA: Sarankan jenis makanan umum yang murah/sehat sesuai preferensi."
+
         prompt = f"""
         Bertindaklah sebagai asisten gizi pribadi yang sangat ramah dan asik (bestie). Jawab dalam Bahasa Indonesia santai (lo, gue, bro, bestie).
         PROGRAM USER: {settings.get('goal', 'Menjaga Berat Badan')}
@@ -153,22 +160,27 @@ class AIService:
         {past_summary}
         MAKANAN HARI INI: {today_summary if history_today else "Belum ada."}
         {offside_instruction}
+        {nearby_info}
         ATURAN: Berikan 2-4 kalimat saran singkat. Gunakan **bold** untuk kata kunci. JANGAN pakai dash (-).
         """
 
-        if self.mode == "openai":
-            response = await self.client.chat.completions.create(
-                model=self.openai_model,
-                messages=[{"role": "user", "content": prompt}],
-                stream=True,
-                max_tokens=400
-            )
-            async for chunk in response:
-                if chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content.replace("—", " ").replace("-", " ")
-        else:
-            # Simple wrapper for compatibility if ollama mode
-            yield "Ollama streaming not implemented yet."
+        try:
+            if self.mode == "openai":
+                print(f"[AI] Calling OpenAI ({self.openai_model})...")
+                response = await self.client.chat.completions.create(
+                    model=self.openai_model,
+                    messages=[{"role": "user", "content": prompt}],
+                    stream=True,
+                    max_tokens=400
+                )
+                async for chunk in response:
+                    if chunk.choices[0].delta.content:
+                        yield chunk.choices[0].delta.content.replace("—", " ").replace("-", " ")
+            else:
+                yield "Ollama streaming not implemented yet."
+        except Exception as e:
+            print(f"[AI Recommendation] Connection Error: {type(e).__name__}: {str(e)}")
+            yield f"⚠️ Cimeat AI sedang gangguan koneksi ({type(e).__name__}). Coba beberapa saat lagi ya bro! 💪"
 
     async def generate_recipe(self, images_bytes: list, settings: dict, additional_prompt: str = ""):
         res = ""
@@ -186,24 +198,29 @@ class AIService:
         JANGAN tulis kata 'Intro' sebagai judul. Langsung tulis deskripsi resepnya aja secara natural.
         """
         
-        if self.mode == "openai":
-            content = [{"type": "text", "text": prompt}]
-            if images_bytes:
-                for img in images_bytes:
-                    b64 = base64.b64encode(img).decode('utf-8')
-                    content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}})
-            
-            response = await self.client.chat.completions.create(
-                model=self.openai_model,
-                messages=[{"role": "user", "content": content}],
-                stream=True,
-                max_tokens=1000
-            )
-            async for chunk in response:
-                if chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
-        else:
-            yield "Ollama recipe streaming not implemented."
+        try:
+            if self.mode == "openai":
+                content = [{"type": "text", "text": prompt}]
+                if images_bytes:
+                    for img in images_bytes:
+                        b64 = base64.b64encode(img).decode('utf-8')
+                        content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}})
+                
+                print(f"[AI Recipe] Calling OpenAI ({self.openai_model})...")
+                response = await self.client.chat.completions.create(
+                    model=self.openai_model,
+                    messages=[{"role": "user", "content": content}],
+                    stream=True,
+                    max_tokens=1000
+                )
+                async for chunk in response:
+                    if chunk.choices[0].delta.content:
+                        yield chunk.choices[0].delta.content
+            else:
+                yield "Ollama recipe streaming not implemented."
+        except Exception as e:
+            print(f"[AI Recipe] Connection Error: {e}")
+            yield f"⚠️ Waduh, Chef AI lagi gak dapet koneksi nih: {e}"
 
     async def chat_recipe(self, recipe_text: str, chat_history: list, new_message: str):
         res = ""
