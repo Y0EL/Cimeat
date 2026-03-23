@@ -585,7 +585,7 @@ export default function App() {
               />
             )}
             {activeTab === "lacak" && (
-              <LacakTab {...{ settings, dailyMacros, streak, weeklyData, weekMac, aiRecommendation, loadingRec }} onRefreshRec={() => fetchRecommendation(true)} onOpenRecipe={() => { setShowRecipeModal(true); setRecipeResult(""); }} />
+              <LacakTab {...{ settings, dailyMacros, streak, weeklyData, weekMac, aiRecommendation, loadingRec, history }} onRefreshRec={() => fetchRecommendation(true)} onOpenRecipe={() => { setShowRecipeModal(true); setRecipeResult(""); }} />
             )}
             {activeTab === "history" && (
               <HistoryTab {...{ history, grouped }}

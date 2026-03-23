@@ -307,4 +307,40 @@ class AIService:
                 raise e
         return {"error": "Ollama text analysis not ported."}
 
+    async def get_share_quote(self, daily_stats: dict, streak: int, settings: dict):
+        total_cal = daily_stats.get('calories', 0)
+        goal = settings.get('calorieGoal', 2000)
+        protein = daily_stats.get('protein', 0)
+        carbs = daily_stats.get('carbs', 0)
+        fat = daily_stats.get('fat', 0)
+        
+        status = "GOAL REACHED" if total_cal <= goal else "OFFSIDE"
+        gap = abs(total_cal - goal)
+        
+        prompt = f"""
+        Bertindaklah sebagai 'Cimit', asisten gizi paling gaul (bestie). 
+        Tugas: Buat 1 kalimat (MAKSIMAL 12 KATA) penyemangat super nendang untuk user pamer (flexing).
+        DATA: {total_cal}/{goal} kcal. P: {protein}g.
+        STREAK: {streak} hari.
+        STATUS: {status}.
+        ATURAN:
+        1. Bahasa Indonesia GAUL (lo, gue, bestie, parah, gokil, bejir).
+        2. Harus SATU KALIMAT PENDEK (ONE-LINER).
+        3. JANGAN pakai markdown atau tanda kutip.
+        4. Langsung to-the-point dan asik banget!
+        """
+        
+        try:
+            if self.mode == "openai":
+                response = await self.client.chat.completions.create(
+                    model=self.openai_model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=100
+                )
+                return response.choices[0].message.content.strip().replace('"', '')
+            return "Gokil banget progres lo hari ini, bestie! Terusin streak-nya biar makin mantap! 🔥"
+        except Exception as e:
+            print(f"[AI Quote] Error: {e}")
+            return "Streak lo makin ngeri, bestie! Jangan kasih kendor, gaskeun terus pola hidup sehatnya! 💪🔥"
+
 ai_service = AIService()

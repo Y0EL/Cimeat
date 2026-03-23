@@ -144,11 +144,6 @@ export default function VoiceOverlay({ isOpen, onClose, onConfirm, isAnalyzing }
       setStandbyMsg(null); // Clear nudge if talking
       resetStandbyTimer(); // Reset the 5s nudge timer
 
-      // Start recording actually on first result
-      if (mediaRecorderRef.current && !isRecordingRef.current) {
-         mediaRecorderRef.current.start(200);
-         isRecordingRef.current = true;
-      }
 
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {

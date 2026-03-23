@@ -182,6 +182,20 @@ async def chat_recipe_stream(data: ChatRecipeRequest):
         print(f"[API] Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+class ShareQuoteRequest(BaseModel):
+    daily_stats: dict
+    streak: int
+    settings: dict
+
+@app.post("/share-quote")
+async def get_share_quote(data: ShareQuoteRequest):
+    try:
+        quote = await ai_service.get_share_quote(data.daily_stats, data.streak, data.settings)
+        return {"quote": quote}
+    except Exception as e:
+        print(f"[API] Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
