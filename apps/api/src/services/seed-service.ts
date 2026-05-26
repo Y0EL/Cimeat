@@ -3,10 +3,6 @@ import { foods, nutritionGoals, type Database } from '@cimeat/db'
 import { PRESET_FOODS } from '../constants'
 import { computeGoalFromProfile, type ProfileMetrics } from './nutrition-util'
 
-/**
- * Seed the global preset food library (userId = null). Idempotent: only inserts
- * when the preset library is empty.
- */
 export async function ensurePresetFoods(db: Database): Promise<void> {
   const existing = await db
     .select({ id: foods.id })
@@ -35,10 +31,6 @@ function todayUtc(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-/**
- * Ensure preset foods exist globally and the user has at least one nutrition
- * goal row. A new user gets a goal computed from their (possibly empty) profile.
- */
 export async function ensureUserDefaults(
   db: Database,
   userId: string,

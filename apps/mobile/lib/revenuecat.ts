@@ -1,16 +1,15 @@
-import { router } from 'expo-router'
 import { Platform } from 'react-native'
 import Purchases, {
   LOG_LEVEL,
   type CustomerInfo,
   type PurchasesError,
-  type PurchasesOffering,
-  type PurchasesPackage,
 } from 'react-native-purchases'
+import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui'
 
-export const CIMEAT_PRO_ENTITLEMENT = 'Cimeat Pro'
+export const CIMEAT_PRO_ENTITLEMENT = 'cimeat_pro'
+export const CIMEAT_MAX_ENTITLEMENT = 'cimeat_max'
 
-export type CimeatPlan = 'lifetime' | 'yearly' | 'monthly'
+export type Plan = 'free' | 'pro' | 'max'
 
 export type PaywallResult = 'NOT_PRESENTED' | 'CANCELLED' | 'PURCHASED' | 'RESTORED' | 'ERROR'
 
@@ -32,7 +31,6 @@ export function configurePurchases(apiKey: string) {
     Purchases.configure({ apiKey })
     configured = true
   } catch (err) {
-    // Expo Go gak punya modul native RevenueCat. Skip diam-diam, fitur Pro mati di Expo Go.
     console.warn('RevenueCat configure failed (probably Expo Go):', err)
   }
 }
@@ -56,45 +54,69 @@ export async function getCustomerInfo(): Promise<CustomerInfo | null> {
   return Purchases.getCustomerInfo()
 }
 
-export async function hasCimeatPro(): Promise<boolean> {
+function planFromInfo(info: CustomerInfo | null): Plan {
+  if (!info) return 'free'
+  const active = info.entitlements.active
+  if (active[CIMEAT_MAX_ENTITLEMENT]) return 'max'
+  if (active[CIMEAT_PRO_ENTITLEMENT]) return 'pro'
+  return 'free'
+}
+
+export async function getPlan(): Promise<Plan> {
   const info = await getCustomerInfo()
-  if (!info) return false
-  return Boolean(info.entitlements.active[CIMEAT_PRO_ENTITLEMENT])
+  return planFromInfo(info)
 }
 
-export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
-  if (!configured) return null
-  const offerings = await Purchases.getOfferings()
-  return offerings.current ?? null
+function mapPaywallResult(result: PAYWALL_RESULT): PaywallResult {
+  switch (result) {
+    case PAYWALL_RESULT.PURCHASED:
+      return 'PURCHASED'
+    case PAYWALL_RESULT.RESTORED:
+      return 'RESTORED'
+    case PAYWALL_RESULT.CANCELLED:
+      return 'CANCELLED'
+    case PAYWALL_RESULT.NOT_PRESENTED:
+      return 'NOT_PRESENTED'
+    default:
+      return 'ERROR'
+  }
 }
 
-export function pickPackage(
-  offering: PurchasesOffering | null,
-  plan: CimeatPlan,
-): PurchasesPackage | null {
-  if (!offering) return null
-  if (plan === 'lifetime') return offering.lifetime ?? null
-  if (plan === 'yearly') return offering.annual ?? null
-  if (plan === 'monthly') return offering.monthly ?? null
-  return null
-}
-
-export async function purchasePackage(pkg: PurchasesPackage): Promise<PurchaseOutcome> {
+export async function presentPaywall(): Promise<PaywallResult> {
+  if (!configured) return 'NOT_PRESENTED'
   try {
-    const { customerInfo } = await Purchases.purchasePackage(pkg)
-    return { ok: true, info: customerInfo }
+    const result = await RevenueCatUI.presentPaywall()
+    return mapPaywallResult(result)
   } catch (err) {
-    const e = err as PurchasesError
-    return {
-      ok: false,
-      userCancelled: Boolean(e.userCancelled),
-      code: String(e.code ?? 'UNKNOWN'),
-      message: e.message ?? 'Pembelian gagal',
-    }
+    console.warn('presentPaywall failed', err)
+    return 'ERROR'
+  }
+}
+
+export async function presentPaywallIfNeeded(entitlement = CIMEAT_PRO_ENTITLEMENT): Promise<PaywallResult> {
+  if (!configured) return 'NOT_PRESENTED'
+  try {
+    const result = await RevenueCatUI.presentPaywallIfNeeded({ requiredEntitlementIdentifier: entitlement })
+    return mapPaywallResult(result)
+  } catch (err) {
+    console.warn('presentPaywallIfNeeded failed', err)
+    return 'ERROR'
+  }
+}
+
+export async function presentCustomerCenter(): Promise<void> {
+  if (!configured) return
+  try {
+    await RevenueCatUI.presentCustomerCenter()
+  } catch (err) {
+    console.warn('presentCustomerCenter failed', err)
   }
 }
 
 export async function restorePurchases(): Promise<PurchaseOutcome> {
+  if (!configured) {
+    return { ok: false, userCancelled: false, code: 'NOT_CONFIGURED', message: 'Belum tersedia di sini' }
+  }
   try {
     const info = await Purchases.restorePurchases()
     return { ok: true, info }
@@ -109,34 +131,24 @@ export async function restorePurchases(): Promise<PurchaseOutcome> {
   }
 }
 
-export async function presentPaywall(): Promise<PaywallResult> {
-  router.push('/paywall')
-  return 'NOT_PRESENTED'
+export type PlanStatus = { plan: Plan; expiresAt: Date | null }
+
+function statusFromInfo(info: CustomerInfo | null): PlanStatus {
+  const plan = planFromInfo(info)
+  if (!info || plan === 'free') return { plan, expiresAt: null }
+  const ent =
+    plan === 'max'
+      ? info.entitlements.active[CIMEAT_MAX_ENTITLEMENT]
+      : info.entitlements.active[CIMEAT_PRO_ENTITLEMENT]
+  return { plan, expiresAt: ent?.expirationDate ? new Date(ent.expirationDate) : null }
 }
 
-export async function presentPaywallIfNeeded(): Promise<PaywallResult> {
-  router.push('/paywall')
-  return 'NOT_PRESENTED'
-}
-
-export async function presentCustomerCenter(): Promise<void> {
-  router.push('/paywall')
-}
-
-export type ProStatus = { isPro: boolean; expiresAt: Date | null }
-
-export function subscribeToProStatus(callback: (status: ProStatus) => void): () => void {
+export function subscribeToPlanStatus(callback: (status: PlanStatus) => void): () => void {
   if (!configured) {
-    callback({ isPro: false, expiresAt: null })
+    callback({ plan: 'free', expiresAt: null })
     return () => {}
   }
-  const apply = (info: CustomerInfo) => {
-    const ent = info.entitlements.active[CIMEAT_PRO_ENTITLEMENT]
-    callback({
-      isPro: Boolean(ent),
-      expiresAt: ent?.expirationDate ? new Date(ent.expirationDate) : null,
-    })
-  }
+  const apply = (info: CustomerInfo) => callback(statusFromInfo(info))
   Purchases.getCustomerInfo()
     .then(apply)
     .catch(() => {})
@@ -145,9 +157,9 @@ export function subscribeToProStatus(callback: (status: ProStatus) => void): () 
 }
 
 export function paywallResultToText(result: PaywallResult): string {
-  if (result === 'PURCHASED') return 'Sip, Cimeat Pro lo aktif sekarang.'
-  if (result === 'RESTORED') return 'Akses Pro lo udah balik.'
+  if (result === 'PURCHASED') return 'Sip, langganan Cimeat lo aktif sekarang.'
+  if (result === 'RESTORED') return 'Akses premium lo udah balik.'
   if (result === 'CANCELLED') return 'Oke, bisa coba lagi kapan aja.'
-  if (result === 'NOT_PRESENTED') return 'Lo udah Pro, gak perlu paywall.'
+  if (result === 'NOT_PRESENTED') return 'Lo udah premium, gak perlu paywall.'
   return 'Ada error, coba lagi yuk.'
 }

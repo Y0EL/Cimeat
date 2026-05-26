@@ -4,23 +4,29 @@ import {
   presentCustomerCenter,
   presentPaywall,
   restorePurchases as restore,
-  subscribeToProStatus,
+  subscribeToPlanStatus,
   type PaywallResult,
-  type ProStatus,
+  type Plan,
+  type PlanStatus,
 } from '~/lib/revenuecat'
+import { track } from '~/lib/analytics'
 
-export type SubscriptionState = ProStatus & { loading: boolean }
+export type SubscriptionState = PlanStatus & {
+  loading: boolean
+  isPro: boolean
+  isMax: boolean
+}
 
 export function useSubscription() {
-  const [state, setState] = useState<SubscriptionState>({
-    isPro: false,
+  const [state, setState] = useState<{ plan: Plan; expiresAt: Date | null; loading: boolean }>({
+    plan: 'free',
     expiresAt: null,
     loading: true,
   })
 
   useEffect(() => {
     let mounted = true
-    const unsub = subscribeToProStatus((status) => {
+    const unsub = subscribeToPlanStatus((status) => {
       if (!mounted) return
       setState({ ...status, loading: false })
     })
@@ -31,6 +37,7 @@ export function useSubscription() {
   }, [])
 
   const openPaywall = useCallback(async () => {
+    track('paywall_open')
     const result: PaywallResult = await presentPaywall()
     return { result, message: paywallResultToText(result) }
   }, [])
@@ -43,5 +50,14 @@ export function useSubscription() {
     return restore()
   }, [])
 
-  return { ...state, openPaywall, openCustomerCenter, restorePurchases }
+  return {
+    plan: state.plan,
+    expiresAt: state.expiresAt,
+    loading: state.loading,
+    isPro: state.plan === 'pro' || state.plan === 'max',
+    isMax: state.plan === 'max',
+    openPaywall,
+    openCustomerCenter,
+    restorePurchases,
+  }
 }

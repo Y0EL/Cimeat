@@ -11,7 +11,6 @@ export type PresetFood = {
   icon: string
 }
 
-// ~20 common Indonesian foods with realistic per-serving macros.
 export const PRESET_FOODS: PresetFood[] = [
   { name: 'Nasi Putih', category: 'grain', servingLabel: '1 centong', calories: 200, protein: 4, carb: 44, fat: 0.4, icon: 'Wheat' },
   { name: 'Nasi Goreng', category: 'grain', servingLabel: '1 piring', calories: 600, protein: 15, carb: 80, fat: 22, icon: 'Wheat' },

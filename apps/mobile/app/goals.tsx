@@ -42,7 +42,6 @@ export default function GoalsScreen() {
   const updateProfile = useUpdateProfile()
   const [mode, setMode] = useState<Mode>('manual')
 
-  // manual fields
   const [calorie, setCalorie] = useState('')
   const [protein, setProtein] = useState('')
   const [carb, setCarb] = useState('')
@@ -59,7 +58,6 @@ export default function GoalsScreen() {
     }
   }, [goals.data])
 
-  // auto fields (body metrics)
   const [height, setHeight] = useState('')
   const [weight, setWeight] = useState('')
   const [birthYear, setBirthYear] = useState('')

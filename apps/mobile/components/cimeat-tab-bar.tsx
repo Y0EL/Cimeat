@@ -1,25 +1,24 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
-import { useRouter } from 'expo-router'
 import {
-  BookOpen,
+  ChefHat,
   House,
+  MapPin,
   Plus,
-  Settings as SettingsIcon,
-  Sparkles,
+  TrendingUp,
   type LucideIcon,
 } from 'lucide-react-native'
 import { Pressable, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAccentColor } from '~/lib/use-accent-color'
 
-type TabKey = 'index' | 'diary' | 'add' | 'coach' | 'settings'
+type TabKey = 'index' | 'recipe' | 'log' | 'nearby' | 'progress'
 
 const tabs: Record<TabKey, { icon: LucideIcon; label: string }> = {
   index: { icon: House, label: 'Beranda' },
-  diary: { icon: BookOpen, label: 'Diary' },
-  add: { icon: Plus, label: 'Catat' },
-  coach: { icon: Sparkles, label: 'Coach' },
-  settings: { icon: SettingsIcon, label: 'Setelan' },
+  recipe: { icon: ChefHat, label: 'Resep' },
+  log: { icon: Plus, label: 'Catat' },
+  nearby: { icon: MapPin, label: 'Sekitar' },
+  progress: { icon: TrendingUp, label: 'Progres' },
 }
 
 const barShadow = {
@@ -40,7 +39,6 @@ const fabShadow = {
 
 export function CimeatTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets()
-  const router = useRouter()
   const accent = useAccentColor()
 
   return (
@@ -59,13 +57,22 @@ export function CimeatTabBar({ state, navigation }: BottomTabBarProps) {
           if (!config) return null
           const isFocused = state.index === index
 
-          if (key === 'add') {
+          const navigate = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            })
+            if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name)
+          }
+
+          if (key === 'log') {
             return (
               <Pressable
                 key={route.key}
                 accessibilityRole="button"
-                accessibilityLabel="Catat cepat"
-                onPress={() => router.push('/add-modal')}
+                accessibilityLabel="Catat makanan"
+                onPress={navigate}
                 style={({ pressed }) => ({
                   transform: [{ scale: pressed ? 0.9 : 1 }],
                   marginHorizontal: 6,
@@ -88,14 +95,7 @@ export function CimeatTabBar({ state, navigation }: BottomTabBarProps) {
               accessibilityRole="button"
               accessibilityLabel={config.label}
               accessibilityState={isFocused ? { selected: true } : {}}
-              onPress={() => {
-                const event = navigation.emit({
-                  type: 'tabPress',
-                  target: route.key,
-                  canPreventDefault: true,
-                })
-                if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name)
-              }}
+              onPress={navigate}
               style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
             >
               <View className="h-14 w-14 items-center justify-center">

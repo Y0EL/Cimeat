@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useRouter } from 'expo-router'
-import { Camera, Flame, MessageCircle, Sparkles } from 'lucide-react-native'
+import { Camera, Flame, Mic, Sparkles } from 'lucide-react-native'
 import { useState } from 'react'
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import Animated, {
@@ -11,7 +11,14 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import type { ActivityLevel, GoalType, UpdateProfileInput } from '@cimeat/types'
+import type {
+  ActivityLevel,
+  CimitTone,
+  EatingMode,
+  GoalType,
+  UpdateProfileInput,
+} from '@cimeat/types'
+import { CimitMascot } from '~/components/cimit/cimit-mascot'
 import { useUpdateProfile } from '~/hooks/use-summary'
 import { useAccentColor } from '~/lib/use-accent-color'
 
@@ -20,19 +27,31 @@ export const ONBOARDING_KEY = 'cimeat.onboarding.done'
 const INTRO = [
   {
     icon: Flame,
-    title: 'Lacak kalori, gampang',
-    body: 'Cimeat bantu lo catat makanan dan tau sisa kalori harian dalam sekejap.',
+    title: 'Kenalin, Cimit!',
+    body: 'Teman makan lo yang bakal bantu catat kalori, kasih saran, dan kadang roast biar on-track.',
   },
   {
     icon: Camera,
-    title: 'Foto, langsung kehitung',
-    body: 'Cukup foto makanan lo, AI Cimeat estimasi kalori dan makronya otomatis.',
+    title: 'Foto atau ngomong aja',
+    body: 'Foto makanan atau ceritain pakai suara, Cimit estimasi kalori & makronya otomatis.',
   },
   {
-    icon: MessageCircle,
-    title: 'Punya diet coach pribadi',
-    body: 'Tanya apa aja soal makanan & target kalori ke AI Diet Coach kapan aja.',
+    icon: Mic,
+    title: 'Resep & makan di sekitar',
+    body: 'Bingung mau makan apa? Cimit kasih ide resep dari bahan yang ada atau rekomendasi terdekat.',
   },
+]
+
+const TONES: { key: CimitTone; label: string; hint: string }[] = [
+  { key: 'soft', label: 'Lembut', hint: 'Sabar & nyemangatin' },
+  { key: 'normal', label: 'Normal', hint: 'Santai tapi jujur' },
+  { key: 'savage', label: 'Savage', hint: 'Pedes, siap diroast' },
+]
+
+const EAT_MODES: { key: EatingMode; label: string }[] = [
+  { key: 'hemat', label: 'Hemat' },
+  { key: 'sehat', label: 'Sehat' },
+  { key: 'balanced', label: 'Seimbang' },
 ]
 
 const ACTIVITY: { key: ActivityLevel; label: string }[] = [
@@ -54,15 +73,16 @@ export default function OnboardingScreen() {
   const accent = useAccentColor()
   const updateProfile = useUpdateProfile()
   const [step, setStep] = useState(0)
-  const TOTAL = INTRO.length + 1 // + goal setup
+  const TOTAL = INTRO.length + 1
 
-  // goal setup
   const [sex, setSex] = useState<'male' | 'female'>('male')
   const [height, setHeight] = useState('')
   const [weight, setWeight] = useState('')
   const [birthYear, setBirthYear] = useState('')
   const [activity, setActivity] = useState<ActivityLevel>('moderate')
   const [goalType, setGoalType] = useState<GoalType>('maintain')
+  const [cimitTone, setCimitTone] = useState<CimitTone>('normal')
+  const [defaultMode, setDefaultMode] = useState<EatingMode>('balanced')
 
   const opacity = useSharedValue(1)
   const translateY = useSharedValue(0)
@@ -86,7 +106,13 @@ export default function OnboardingScreen() {
   }
 
   function saveAndFinish() {
-    const input: UpdateProfileInput = { sex, activityLevel: activity, goalType }
+    const input: UpdateProfileInput = {
+      sex,
+      activityLevel: activity,
+      goalType,
+      cimitTone,
+      defaultMode,
+    }
     if (Number(height) > 0) input.heightCm = Number(height)
     if (Number(weight) > 0) input.weightKg = Number(weight)
     if (Number(birthYear) > 0) input.birthYear = Number(birthYear)
@@ -186,6 +212,41 @@ export default function OnboardingScreen() {
             />
             <Label>Tujuan</Label>
             <Chips options={GOALS} value={goalType} onChange={(v) => setGoalType(v as GoalType)} />
+
+            <Label>Mode makan default</Label>
+            <Chips
+              options={EAT_MODES}
+              value={defaultMode}
+              onChange={(v) => setDefaultMode(v as EatingMode)}
+            />
+
+            <Label>Gaya Cimit</Label>
+            <View className="gap-2">
+              {TONES.map((t) => {
+                const active = cimitTone === t.key
+                return (
+                  <Pressable
+                    key={t.key}
+                    onPress={() => setCimitTone(t.key)}
+                    className={
+                      active
+                        ? 'flex-row items-center gap-3 rounded-2xl border-2 border-primary-500 bg-primary-50 px-3 py-2.5 dark:bg-primary-950'
+                        : 'flex-row items-center gap-3 rounded-2xl border-2 border-transparent bg-white px-3 py-2.5 dark:bg-zinc-900'
+                    }
+                  >
+                    <CimitMascot size={32} tone={t.key} />
+                    <View className="flex-1">
+                      <Text className="font-sans text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                        {t.label}
+                      </Text>
+                      <Text className="font-sans text-xs text-zinc-500 dark:text-zinc-400">
+                        {t.hint}
+                      </Text>
+                    </View>
+                  </Pressable>
+                )
+              })}
+            </View>
 
             <Pressable
               onPress={saveAndFinish}

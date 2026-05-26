@@ -1,169 +1,84 @@
+import { desc, eq } from 'drizzle-orm'
+import { composeSystemPrompt, generateRecipeTask } from '@cimeat/prompts'
+import { recipes, type Database, type Recipe } from '@cimeat/db'
 import {
-  GoogleGenerativeAI,
-  SchemaType,
-  type Content,
-  type FunctionDeclaration,
-  type Part,
-} from '@google/generative-ai'
-import { recipeSystemPrompt } from '@cimeat/prompts'
+  recipeResponseSchema,
+  type CimitTone,
+  type RecipeGenerateInput,
+  type RecipeResponse,
+} from '@cimeat/types'
+import type { z } from 'zod'
 import { loadEnv } from '../env'
-import { logger } from '../logger'
+import { generateJson } from './ai-orchestrator'
 
-const MAX_HOPS = 6
+const recipeModelSchema = recipeResponseSchema.omit({ id: true, mode: true })
 
-export type RecipeIngredient = {
-  name: string
-  calories: number
-  protein: number
-  carb: number
-  fat: number
+function buildPrompt(input: RecipeGenerateInput): string {
+  const lines: string[] = [`Bahan yang dimiliki: ${input.ingredients.join(', ')}.`, `Mode: ${input.mode}.`]
+  if (input.remaining_calories !== undefined) lines.push(`Sisa kalori hari ini: ${input.remaining_calories} kkal.`)
+  if (input.remaining_protein_g !== undefined) lines.push(`Sisa protein: ${input.remaining_protein_g} g.`)
+  if (input.budget !== undefined) lines.push(`Budget: Rp${input.budget}.`)
+  if (input.tools?.length) lines.push(`Alat masak: ${input.tools.join(', ')}.`)
+  if (input.avoid?.length) lines.push(`Pantangan: ${input.avoid.join(', ')}.`)
+  return lines.join('\n')
 }
 
-export type RecipeResult = {
-  ingredients: RecipeIngredient[]
-  servings: number
-  total: { calories: number; protein: number; carb: number; fat: number }
-  perServing: { calories: number; protein: number; carb: number; fat: number }
-}
+export async function generateRecipe(
+  db: Database,
+  userId: string,
+  input: RecipeGenerateInput,
+  tone: CimitTone,
+): Promise<RecipeResponse> {
+  const env = loadEnv()
+  const partial = await generateJson<z.infer<typeof recipeModelSchema>>({
+    model: env.GEMINI_MODEL_CHAT,
+    systemInstruction: composeSystemPrompt(generateRecipeTask, { includePersona: true, tone }),
+    parts: [{ text: buildPrompt(input) }],
+    schema: recipeModelSchema,
+    label: 'recipe',
+  })
 
-const recipeDeclaration: FunctionDeclaration = {
-  name: 'hitung_resep',
-  description:
-    'Hitung total kalori dan makro resep lalu bagi per porsi. Panggil setelah semua bahan + jumlah porsi terkumpul.',
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {
-      ingredients: {
-        type: SchemaType.ARRAY,
-        description: 'Daftar bahan dengan estimasi gizi per takaran yang disebut user.',
-        items: {
-          type: SchemaType.OBJECT,
-          properties: {
-            name: { type: SchemaType.STRING, description: 'Nama bahan beserta takaran.' },
-            calories: { type: SchemaType.NUMBER, description: 'Kalori bahan (kkal).' },
-            protein: { type: SchemaType.NUMBER, description: 'Protein gram.' },
-            carb: { type: SchemaType.NUMBER, description: 'Karbohidrat gram.' },
-            fat: { type: SchemaType.NUMBER, description: 'Lemak gram.' },
-          },
-          required: ['name', 'calories', 'protein', 'carb', 'fat'],
-        },
-      },
-      servings: { type: SchemaType.NUMBER, description: 'Resep jadi berapa porsi.' },
-    },
-    required: ['ingredients', 'servings'],
-  },
-}
+  const rows = await db
+    .insert(recipes)
+    .values({
+      userId,
+      title: partial.title,
+      mode: input.mode,
+      ingredients: input.ingredients,
+      recipeMarkdown: partial.recipe_markdown,
+      nutritionEstimate: partial.nutrition_estimate,
+    })
+    .returning()
+  const saved = rows[0]!
 
-function calcRecipe(ingredients: RecipeIngredient[], servings: number): RecipeResult {
-  const safeServings = servings > 0 ? servings : 1
-  const total = ingredients.reduce(
-    (acc, it) => ({
-      calories: acc.calories + (it.calories || 0),
-      protein: acc.protein + (it.protein || 0),
-      carb: acc.carb + (it.carb || 0),
-      fat: acc.fat + (it.fat || 0),
-    }),
-    { calories: 0, protein: 0, carb: 0, fat: 0 },
-  )
   return {
-    ingredients,
-    servings: safeServings,
-    total: {
-      calories: Math.round(total.calories),
-      protein: Math.round(total.protein * 10) / 10,
-      carb: Math.round(total.carb * 10) / 10,
-      fat: Math.round(total.fat * 10) / 10,
-    },
-    perServing: {
-      calories: Math.round(total.calories / safeServings),
-      protein: Math.round((total.protein / safeServings) * 10) / 10,
-      carb: Math.round((total.carb / safeServings) * 10) / 10,
-      fat: Math.round((total.fat / safeServings) * 10) / 10,
-    },
+    id: saved.id,
+    title: partial.title,
+    mode: input.mode,
+    recipe_markdown: partial.recipe_markdown,
+    nutrition_estimate: partial.nutrition_estimate,
+    ...(partial.cimit_message ? { cimit_message: partial.cimit_message } : {}),
   }
 }
 
-let genAI: GoogleGenerativeAI | null = null
-function getGenAI(): GoogleGenerativeAI {
-  if (!genAI) genAI = new GoogleGenerativeAI(loadEnv().GEMINI_API_KEY)
-  return genAI
+export async function listRecipes(db: Database, userId: string, limit = 50): Promise<Recipe[]> {
+  return db
+    .select()
+    .from(recipes)
+    .where(eq(recipes.userId, userId))
+    .orderBy(desc(recipes.createdAt))
+    .limit(limit)
 }
 
-export async function runRecipeTurn(
-  message: string,
-  history: Array<{ role: string; content: string }>,
-  onChunk: (text: string) => void,
-  onResult: (result: RecipeResult) => void,
-): Promise<string> {
-  const env = loadEnv()
-  const contentHistory: Content[] = history.map((m) => ({
-    role: m.role === 'user' ? 'user' : 'model',
-    parts: [{ text: m.content }],
-  }))
-
-  const model = getGenAI().getGenerativeModel({
-    model: env.GEMINI_MODEL_CHAT,
-    systemInstruction: recipeSystemPrompt,
-    tools: [{ functionDeclarations: [recipeDeclaration] }],
-  })
-
-  const chat = model.startChat({ history: contentHistory })
-
-  try {
-    const streamResult = await chat.sendMessageStream(message)
-
-    let accText = ''
-    let hasToolCall = false
-
-    for await (const chunk of streamResult.stream) {
-      for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
-        if ('text' in part && part.text) {
-          accText += part.text
-          onChunk(part.text)
-        }
-        if ('functionCall' in part && part.functionCall) {
-          hasToolCall = true
-        }
-      }
-    }
-
-    if (!hasToolCall) return accText || 'Hmm, coba ulangin?'
-
-    let currentResponse = await streamResult.response
-
-    for (let hop = 0; hop < MAX_HOPS; hop += 1) {
-      const calls = currentResponse.functionCalls()
-      if (!calls?.length) {
-        const text = currentResponse.text().trim()
-        if (text) onChunk(text)
-        return text || accText || 'Hmm, coba ulangin?'
-      }
-
-      const responseParts: Part[] = []
-      for (const call of calls) {
-        if (call.name === 'hitung_resep') {
-          const args = call.args as { ingredients?: RecipeIngredient[]; servings?: number }
-          const result = calcRecipe(args.ingredients ?? [], args.servings ?? 1)
-          onResult(result)
-          responseParts.push({
-            functionResponse: { name: call.name, response: { ok: true, ...result } },
-          })
-        } else {
-          responseParts.push({
-            functionResponse: { name: call.name, response: { ok: false } },
-          })
-        }
-      }
-
-      const next = await chat.sendMessage(responseParts)
-      currentResponse = next.response
-    }
-
-    const finalText = currentResponse.text().trim()
-    if (finalText) onChunk(finalText)
-    return finalText || accText || 'Hmm, coba ulangin?'
-  } catch (err) {
-    logger.error({ err }, 'recipe turn failed')
-    throw err
+export function toRecipeResponse(r: Recipe): RecipeResponse {
+  const nutrition = recipeResponseSchema.shape.nutrition_estimate.safeParse(r.nutritionEstimate)
+  return {
+    id: r.id,
+    title: r.title,
+    mode: r.mode,
+    recipe_markdown: r.recipeMarkdown,
+    nutrition_estimate: nutrition.success
+      ? nutrition.data
+      : { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, servings: 1 },
   }
 }

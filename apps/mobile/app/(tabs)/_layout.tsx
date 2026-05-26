@@ -5,10 +5,10 @@ export default function TabsLayout() {
   return (
     <Tabs screenOptions={{ headerShown: false }} tabBar={(props) => <CimeatTabBar {...props} />}>
       <Tabs.Screen name="index" options={{ title: 'Beranda' }} />
-      <Tabs.Screen name="diary" options={{ title: 'Diary' }} />
-      <Tabs.Screen name="add" options={{ title: 'Catat' }} />
-      <Tabs.Screen name="coach" options={{ title: 'Coach' }} />
-      <Tabs.Screen name="settings" options={{ title: 'Setelan' }} />
+      <Tabs.Screen name="recipe" options={{ title: 'Resep' }} />
+      <Tabs.Screen name="log" options={{ title: 'Catat' }} />
+      <Tabs.Screen name="nearby" options={{ title: 'Sekitar' }} />
+      <Tabs.Screen name="progress" options={{ title: 'Progres' }} />
     </Tabs>
   )
 }

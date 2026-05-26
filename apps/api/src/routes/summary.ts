@@ -5,7 +5,8 @@ import type { AppEnv } from '../context'
 import { getDb } from '../db'
 import { requireAuth } from '../middleware/auth'
 import { getActiveGoal } from '../services/goal-service'
-import { getDailySummary, getFlexTrend } from '../services/meal-service'
+import { getDailySummary } from '../services/daily-summary-service'
+import { getFlexTrend } from '../services/foodlog-service'
 import { getUser, profileMetrics } from '../services/user-service'
 
 export const summaryRouter = new Hono<AppEnv>()

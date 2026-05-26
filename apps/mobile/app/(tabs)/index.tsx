@@ -1,19 +1,23 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { Camera, ChartLine, Plus, UtensilsCrossed } from 'lucide-react-native'
+import { Plus, UtensilsCrossed } from 'lucide-react-native'
 import { useCallback, useMemo } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import type { MealType } from '@cimeat/types'
+import type { FoodLogDto, MealType } from '@cimeat/types'
 import { formatKcal } from '@cimeat/chat-core'
 import { CalorieRing } from '~/components/calorie-ring'
+import { CimitAdviceCard } from '~/components/cimit/cimit-advice-card'
 import { MacroBarRow } from '~/components/macro-bar'
 import { MealCard } from '~/components/meal-card'
+import { PlanBadge } from '~/components/plan-badge'
 import { ScreenFade } from '~/components/screen-fade'
 import { useAuth } from '~/hooks/use-auth'
-import { useMeals } from '~/hooks/use-meals'
+import { useDailyAdvice, useRoast } from '~/hooks/use-cimit'
+import { useFoodLogs } from '~/hooks/use-food-logs'
+import { useProfile } from '~/hooks/use-summary'
 import { useDailySummary, todayDate } from '~/hooks/use-summary'
-import { useAccentColor } from '~/lib/use-accent-color'
+import { useSubscription } from '~/hooks/use-subscription'
 
 const MEAL_GROUPS: { type: MealType; label: string; emoji: string }[] = [
   { type: 'breakfast', label: 'Sarapan', emoji: '🍳' },
@@ -33,37 +37,54 @@ const ringShadow = {
 export default function HomeTab() {
   const { user } = useAuth()
   const router = useRouter()
-  const accent = useAccentColor()
   const queryClient = useQueryClient()
+  const profile = useProfile()
+  const { plan } = useSubscription()
   const firstName = user?.displayName?.split(' ')[0] ?? 'kamu'
+  const initial = (user?.displayName ?? user?.email ?? 'C').charAt(0).toUpperCase()
 
   const today = todayDate()
   const summary = useDailySummary(today)
   const start = `${today}T00:00:00.000Z`
   const end = `${today}T23:59:59.999Z`
-  const meals = useMeals({ from: start, to: end })
+  const logs = useFoodLogs({ from: start, to: end })
+
+  const offside = summary.data?.offsideAmount ?? 0
+  const isRoast = offside > 0
+  const advice = useDailyAdvice()
+  const roast = useRoast()
+  const tone = profile.data?.cimitTone ?? 'normal'
 
   useFocusEffect(
     useCallback(() => {
       queryClient.invalidateQueries({ queryKey: ['summary'] })
-      queryClient.invalidateQueries({ queryKey: ['meals'] })
+      queryClient.invalidateQueries({ queryKey: ['food-logs'] })
     }, [queryClient]),
   )
 
-  const allMeals = meals.data?.pages.flatMap((p) => p.items) ?? []
+  const allLogs = logs.data?.pages.flatMap((p) => p.items) ?? []
   const grouped = useMemo(() => {
-    const map = new Map<MealType, typeof allMeals>()
-    for (const m of allMeals) {
+    const map = new Map<MealType, FoodLogDto[]>()
+    for (const m of allLogs) {
+      if (!m.mealType) continue
       const list = map.get(m.mealType) ?? []
       list.push(m)
       map.set(m.mealType, list)
     }
     return map
-  }, [allMeals])
+  }, [allLogs])
 
   const consumed = summary.data?.consumed
   const goal = summary.data?.goal
   const calorieGoal = goal?.calorieGoal ?? 2000
+
+  const cimitMessage = isRoast ? roast.data?.message : advice.data?.message
+  const cimitLoading = isRoast ? roast.isPending : advice.isLoading
+
+  const maybeRoast = useCallback(() => {
+    if (isRoast && !roast.data && !roast.isPending) roast.mutate()
+  }, [isRoast, roast])
+  useFocusEffect(maybeRoast)
 
   return (
     <SafeAreaView className="flex-1 bg-cream dark:bg-zinc-950" edges={['top']}>
@@ -82,14 +103,19 @@ export default function HomeTab() {
                 Cimeat
               </Text>
             </View>
-            <Pressable
-              onPress={() => router.push('/analytics')}
-              accessibilityRole="button"
-              accessibilityLabel="Lihat analitik"
-              className="h-11 w-11 items-center justify-center rounded-full bg-primary-100 active:opacity-70 dark:bg-primary-950"
-            >
-              <ChartLine size={20} color={accent} />
-            </Pressable>
+            <View className="flex-row items-center gap-2">
+              <PlanBadge plan={plan} onPress={() => router.push('/profile')} />
+              <Pressable
+                onPress={() => router.push('/profile')}
+                accessibilityRole="button"
+                accessibilityLabel="Profil"
+                className="h-11 w-11 items-center justify-center rounded-full bg-primary-100 active:opacity-70 dark:bg-primary-950"
+              >
+                <Text className="font-display text-lg font-bold text-primary-700 dark:text-primary-300">
+                  {initial}
+                </Text>
+              </Pressable>
+            </View>
           </View>
 
           <View
@@ -109,20 +135,14 @@ export default function HomeTab() {
             </View>
           </View>
 
-          <View className="mx-4 mt-4 flex-row gap-3">
-            <QuickAction
-              icon={<Camera size={20} color={accent} />}
-              label="Foto makanan"
-              onPress={() => router.push('/add-modal?tab=scan')}
-            />
-            <QuickAction
-              icon={<Plus size={20} color={accent} />}
-              label="Catat manual"
-              onPress={() => router.push('/add-modal')}
-            />
-          </View>
+          <CimitAdviceCard
+            message={cimitMessage}
+            loading={cimitLoading}
+            isRoast={isRoast}
+            tone={tone}
+          />
 
-          <View className="mt-8 px-4">
+          <View className="mt-6 px-4">
             <Text className="font-display text-lg font-bold text-zinc-900 dark:text-zinc-100">
               Makanan hari ini
             </Text>
@@ -151,12 +171,12 @@ export default function HomeTab() {
                           {formatKcal(subtotal)}
                         </Text>
                         <Pressable
-                          onPress={() => router.push(`/add-modal?mealType=${group.type}`)}
+                          onPress={() => router.push(`/log?mealType=${group.type}`)}
                           accessibilityRole="button"
                           accessibilityLabel={`Tambah ${group.label}`}
                           className="h-7 w-7 items-center justify-center rounded-full bg-primary-100 active:opacity-70 dark:bg-primary-950"
                         >
-                          <Plus size={16} color={accent} strokeWidth={2.5} />
+                          <Plus size={16} color="#ea580c" strokeWidth={2.5} />
                         </Pressable>
                       </View>
                     </View>
@@ -165,15 +185,15 @@ export default function HomeTab() {
                         {list.map((m) => (
                           <MealCard
                             key={m.id}
-                            title={m.name}
-                            subtitle={m.servings !== 1 ? `${m.servings} porsi` : undefined}
+                            title={m.foodName}
+                            subtitle={m.estimatedWeightG ? `${m.estimatedWeightG} g` : undefined}
                             calories={m.calories}
                           />
                         ))}
                       </View>
                     ) : (
                       <Pressable
-                        onPress={() => router.push(`/add-modal?mealType=${group.type}`)}
+                        onPress={() => router.push(`/log?mealType=${group.type}`)}
                         className="mt-2 flex-row items-center gap-2 active:opacity-60"
                       >
                         <UtensilsCrossed size={14} color="#a1a1aa" />
@@ -190,31 +210,5 @@ export default function HomeTab() {
         </ScrollView>
       </ScreenFade>
     </SafeAreaView>
-  )
-}
-
-function QuickAction({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: React.ReactNode
-  label: string
-  onPress: () => void
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      className="flex-1 flex-row items-center gap-2 rounded-card bg-white px-4 py-3.5 active:opacity-80 dark:bg-zinc-900"
-    >
-      <View className="h-9 w-9 items-center justify-center rounded-full bg-primary-50 dark:bg-primary-950">
-        {icon}
-      </View>
-      <Text className="font-sans text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-        {label}
-      </Text>
-    </Pressable>
   )
 }

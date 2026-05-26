@@ -11,6 +11,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@cimeat/types": "workspace:^"
+  },
   "devDependencies": {
     "typescript": "^5.7.2"
   }

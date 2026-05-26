@@ -27,8 +27,6 @@ profileRouter.patch('/', zValidator('json', updateProfileSchema), async (c) => {
 
   const updated = await updateUserProfile(db, userId, input)
 
-  // When body metrics are touched and the profile now has the full set needed
-  // for TDEE, recompute and upsert a suggested goal so targets stay in sync.
   const metricsTouched =
     input.sex !== undefined ||
     input.birthYear !== undefined ||

@@ -3,7 +3,6 @@ import { foods, type Database, type Food } from '@cimeat/db'
 import type { CreateFoodInput, UpdateFoodInput } from '@cimeat/types'
 import { HttpError } from '../errors'
 
-/** Preset foods (userId null) plus the user's own foods, optional name search. */
 export async function listFoods(db: Database, userId: string, q?: string): Promise<Food[]> {
   const ownership = or(isNull(foods.userId), eq(foods.userId, userId))!
   const conds: SQL[] = [ownership]

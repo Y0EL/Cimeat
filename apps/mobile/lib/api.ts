@@ -60,8 +60,13 @@ export async function apiStream(
   }
 }
 
+export function isQuotaExceeded(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 402 && err.code === 'QUOTA_EXCEEDED'
+}
+
 export function apiErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
+    if (isQuotaExceeded(err)) return 'Jatah harian lo udah abis. Upgrade buat lanjut ya.'
     if (err.code === 'UNAUTHORIZED') return 'Sesi lo abis, coba login ulang ya.'
     if (err.code === 'NOT_FOUND') return 'Datanya gak ketemu.'
     if (err.code === 'VALIDATION_ERROR') return 'Ada isian yang belum bener.'

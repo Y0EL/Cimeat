@@ -76,7 +76,6 @@ export function getCategoryMeta(key: CategoryKey): CategoryMeta {
   return categoryList.find((c) => c.key === key) ?? other
 }
 
-// Macro color convention shared across charts and rings.
 export const MACRO_COLORS = {
   calories: '#f97316',
   protein: '#f43f5e',

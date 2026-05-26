@@ -10,7 +10,6 @@ const BAR_WIDTH = 12
 const CORNER_RADIUS = 5
 
 function shortLabel(label: string): string {
-  // label is a date (YYYY-MM-DD) or month (YYYY-MM)
   if (label.length >= 10) return String(Number.parseInt(label.slice(8, 10), 10))
   if (label.length >= 7) return label.slice(5, 7)
   return label

@@ -16,10 +16,9 @@ const GOAL_CALORIE_ADJUSTMENT: Record<GoalType, number> = {
 
 const DEFAULT_GOAL: NutritionGoalDto = {
   calorieGoal: 2000,
-  // protein 25%, carb 50%, fat 25% of a 2000 kcal default
-  proteinGoal: 125, // 2000 * 0.25 / 4
-  carbGoal: 250, // 2000 * 0.5 / 4
-  fatGoal: 56, // 2000 * 0.25 / 9 ~= 55.6
+  proteinGoal: 125,
+  carbGoal: 250,
+  fatGoal: 56,
   goalType: 'maintain',
 }
 
@@ -32,11 +31,6 @@ export type ProfileMetrics = {
   goalType: GoalType | null
 }
 
-/**
- * Compute a suggested daily nutrition goal from a user's body profile using
- * Mifflin-St Jeor BMR x activity factor, adjusted for the user's goal type.
- * Returns a sensible 2000 kcal default when required metrics are missing.
- */
 export function computeGoalFromProfile(profile: ProfileMetrics): NutritionGoalDto {
   const { sex, birthYear, heightCm, weightKg } = profile
   if (!sex || !birthYear || !heightCm || !weightKg) {
@@ -48,7 +42,6 @@ export function computeGoalFromProfile(profile: ProfileMetrics): NutritionGoalDt
     return { ...DEFAULT_GOAL, goalType: profile.goalType ?? 'maintain' }
   }
 
-  // Mifflin-St Jeor
   const bmr =
     10 * weightKg + 6.25 * heightCm - 5 * age + (sex === 'male' ? 5 : -161)
 
@@ -58,7 +51,6 @@ export function computeGoalFromProfile(profile: ProfileMetrics): NutritionGoalDt
 
   const calorieGoal = Math.max(1000, Math.round(tdee))
 
-  // protein 2g/kg bodyweight, fat 25% of calories, carbs remainder
   const proteinGoal = Math.round(weightKg * 2)
   const fatGoal = Math.round((calorieGoal * 0.25) / 9)
   const remainingCalories = calorieGoal - proteinGoal * 4 - fatGoal * 9

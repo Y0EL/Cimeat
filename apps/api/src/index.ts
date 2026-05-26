@@ -7,22 +7,18 @@ import { loadEnv } from './env'
 import { HttpError } from './errors'
 import { logger } from './logger'
 import { authRouter } from './routes/auth'
-import { coachRouter } from './routes/coach'
-import { foodScanRouter } from './routes/food-scan'
+import { cimitRouter } from './routes/cimit'
+import { foodAiRouter } from './routes/food-ai'
+import { foodLogsRouter } from './routes/food-logs'
 import { foodsRouter } from './routes/foods'
 import { goalsRouter } from './routes/goals'
 import { healthRouter } from './routes/health'
-import { linkingRouter } from './routes/linking'
-import { mealsRouter } from './routes/meals'
-import { notifRouter } from './routes/notif'
+import { nearbyRouter } from './routes/nearby'
 import { profileRouter } from './routes/profile'
-import { recipeRouter } from './routes/recipe'
+import { recipesRouter } from './routes/recipes'
+import { subscriptionRouter } from './routes/subscription'
 import { summaryRouter } from './routes/summary'
-import { whatsappRouter } from './routes/whatsapp'
-import { registerCrons } from './services/cron-service'
-import { createTelegramBot } from './telegram/bot'
-import { getDb } from './db'
-import { restoreActiveSessions } from './whatsapp/manager'
+import { usageRouter } from './routes/usage'
 
 const env = loadEnv()
 
@@ -58,45 +54,21 @@ app.route('/health', healthRouter)
 app.route('/v1/auth', authRouter)
 app.route('/v1/profile', profileRouter)
 app.route('/v1/foods', foodsRouter)
-app.route('/v1/meals', mealsRouter)
+app.route('/v1/food-logs', foodLogsRouter)
 app.route('/v1/goals', goalsRouter)
 app.route('/v1/summary', summaryRouter)
-app.route('/v1/food-scan', foodScanRouter)
-app.route('/v1/coach', coachRouter)
-app.route('/v1/recipe', recipeRouter)
-app.route('/v1/linking', linkingRouter)
-app.route('/v1/notif', notifRouter)
-app.route('/v1/whatsapp', whatsappRouter)
-
-const bot = createTelegramBot(env.TELEGRAM_BOT_TOKEN)
-
-bot
-  .start({
-    drop_pending_updates: true,
-    onStart: (info) => logger.info({ username: info.username }, 'Telegram bot polling started'),
-  })
-  .catch((err) => {
-    const description =
-      err instanceof Error
-        ? err.message
-        : typeof err === 'object' && err && 'description' in err
-          ? String((err as { description: unknown }).description)
-          : String(err)
-    logger.error({ description }, 'Telegram polling stopped, instance lain mungkin lagi polling')
-  })
-
-registerCrons(getDb())
-
-void restoreActiveSessions(getDb()).catch((err) =>
-  logger.error({ err }, 'restore wa sessions gagal'),
-)
+app.route('/v1/food-ai', foodAiRouter)
+app.route('/v1/recipes', recipesRouter)
+app.route('/v1/nearby', nearbyRouter)
+app.route('/v1/cimit', cimitRouter)
+app.route('/v1/usage', usageRouter)
+app.route('/v1/subscription', subscriptionRouter)
 
 serve({ fetch: app.fetch, port: env.PORT, hostname: '0.0.0.0' }, (info) => {
   logger.info({ port: info.port, address: info.address }, 'Cimeat API listening')
 })
 
-process.on('SIGINT', async () => {
+process.on('SIGINT', () => {
   logger.info('Shutting down')
-  await bot.stop()
   process.exit(0)
 })

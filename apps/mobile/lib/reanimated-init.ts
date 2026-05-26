@@ -1,5 +1,3 @@
-// Reanimated 4 ganti API logger ke configureReanimatedLogger.
-// Tetap set global sebelum reanimated load sebagai fallback aman.
 type ReanimatedLoggerConfig = {
   strict: boolean
   level: 'fatal' | 'error' | 'warn' | 'info' | 'debug'
@@ -22,8 +20,6 @@ try {
       strict: false,
     })
   }
-} catch {
-  // ignore, fallback to global config
-}
+} catch {}
 
 export {}

@@ -7,15 +7,12 @@ import {
   pgEnum,
   pgTable,
   real,
-  smallint,
   text,
-  time,
   timestamp,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 
-export const channelEnum = pgEnum('channel', ['telegram', 'whatsapp'])
 export const mealTypeEnum = pgEnum('meal_type', ['breakfast', 'lunch', 'dinner', 'snack'])
 export const foodCategoryEnum = pgEnum('food_category', [
   'protein',
@@ -28,16 +25,16 @@ export const foodCategoryEnum = pgEnum('food_category', [
   'snack',
   'other',
 ])
-export const mealSourceEnum = pgEnum('meal_source', [
-  'mobile',
+export const foodLogSourceEnum = pgEnum('food_log_source', [
+  'vision',
+  'audio',
+  'text',
+  'manual',
+  'nearby',
+  'recipe',
   'telegram',
   'whatsapp',
-  'photo',
-  'chat',
-  'manual',
-  'recipe',
 ])
-export const confidenceEnum = pgEnum('confidence', ['high', 'medium', 'low'])
 export const sexEnum = pgEnum('sex', ['male', 'female'])
 export const activityLevelEnum = pgEnum('activity_level', [
   'sedentary',
@@ -47,6 +44,28 @@ export const activityLevelEnum = pgEnum('activity_level', [
   'very_active',
 ])
 export const goalTypeEnum = pgEnum('goal_type', ['lose', 'maintain', 'gain'])
+export const planEnum = pgEnum('plan', ['free', 'pro', 'max'])
+export const cimitToneEnum = pgEnum('cimit_tone', ['soft', 'normal', 'savage'])
+export const eatingModeEnum = pgEnum('eating_mode', ['hemat', 'sehat', 'balanced'])
+export const usageFeatureEnum = pgEnum('usage_feature', [
+  'vision',
+  'audio',
+  'text',
+  'recipe',
+  'nearby',
+  'cimit_advice',
+  'tts',
+])
+export const subscriptionEntitlementEnum = pgEnum('subscription_entitlement', [
+  'cimeat_pro',
+  'cimeat_max',
+])
+export const cimitMessageTypeEnum = pgEnum('cimit_message_type', [
+  'advice',
+  'roast',
+  'chat',
+  'recipe_comment',
+])
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -55,47 +74,18 @@ export const users = pgTable('users', {
   name: text('name'),
   phone: text('phone'),
   locale: text('locale').notNull().default('id-ID'),
-  // Body profile (for TDEE calculation)
   sex: sexEnum('sex'),
   birthYear: integer('birth_year'),
   heightCm: real('height_cm'),
   weightKg: real('weight_kg'),
   activityLevel: activityLevelEnum('activity_level').default('moderate'),
   goalType: goalTypeEnum('goal_type').default('maintain'),
-  isSubscribed: boolean('is_subscribed').notNull().default(false),
-  subscriptionExpiresAt: timestamp('subscription_expires_at', { withTimezone: true }),
+  activePlan: planEnum('active_plan').notNull().default('free'),
+  cimitTone: cimitToneEnum('cimit_tone').notNull().default('normal'),
+  defaultMode: eatingModeEnum('default_mode').notNull().default('balanced'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-export const channelLinks = pgTable(
-  'channel_links',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    channel: channelEnum('channel').notNull(),
-    externalId: text('external_id').notNull(),
-    linkedAt: timestamp('linked_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => ({
-    channelExternalUnique: uniqueIndex('channel_links_channel_external_uq').on(
-      t.channel,
-      t.externalId,
-    ),
-  }),
-)
-
-export const linkingCodes = pgTable('linking_codes', {
-  code: text('code').primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  usedAt: timestamp('used_at', { withTimezone: true }),
-})
-
-// Food database: preset library + user custom foods. Macros per single serving.
 export const foods = pgTable(
   'foods',
   {
@@ -118,38 +108,38 @@ export const foods = pgTable(
   }),
 )
 
-// Logged meals. Macros are the final values for the entry (food macros * servings).
-export const meals = pgTable(
-  'meals',
+export const foodLogs = pgTable(
+  'food_logs',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     foodId: uuid('food_id').references(() => foods.id),
-    mealType: mealTypeEnum('meal_type').notNull(),
-    name: text('name').notNull(),
-    servings: real('servings').notNull().default(1),
+    source: foodLogSourceEnum('source').notNull().default('manual'),
+    mealType: mealTypeEnum('meal_type'),
+    foodName: text('food_name').notNull(),
+    estimatedWeightG: integer('estimated_weight_g'),
     calories: integer('calories').notNull(),
-    protein: real('protein').notNull().default(0),
-    carb: real('carb').notNull().default(0),
-    fat: real('fat').notNull().default(0),
+    proteinG: real('protein_g').notNull().default(0),
+    carbsG: real('carbs_g').notNull().default(0),
+    fatG: real('fat_g').notNull().default(0),
+    healthScore: integer('health_score'),
+    confidenceScore: real('confidence_score'),
+    imageUrl: text('image_url'),
+    audioUrl: text('audio_url'),
     note: text('note'),
-    photoUrl: text('photo_url'),
-    loggedAt: timestamp('logged_at', { withTimezone: true }).notNull(),
-    source: mealSourceEnum('source').notNull().default('mobile'),
-    photoConfidence: confidenceEnum('photo_confidence'),
-    rawPayload: jsonb('raw_payload'),
+    rawAiResult: jsonb('raw_ai_result'),
+    eatenAt: timestamp('eaten_at', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
-    userLoggedIdx: index('meals_user_logged_idx').on(t.userId, t.loggedAt),
-    userMealTypeIdx: index('meals_user_meal_type_idx').on(t.userId, t.mealType),
+    userEatenIdx: index('food_logs_user_eaten_idx').on(t.userId, t.eatenAt),
+    userMealTypeIdx: index('food_logs_user_meal_type_idx').on(t.userId, t.mealType),
   }),
 )
 
-// Daily nutrition targets. One active row per user (latest by startsAt wins).
 export const nutritionGoals = pgTable('nutrition_goals', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
@@ -164,55 +154,161 @@ export const nutritionGoals = pgTable('nutrition_goals', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-// AI Diet Coach chat history (chat-only, no voice sessions).
-export const coachMessages = pgTable(
-  'coach_messages',
+export const recipes = pgTable(
+  'recipes',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    role: text('role').notNull(),
-    content: text('content').notNull(),
+    title: text('title').notNull(),
+    mode: eatingModeEnum('mode').notNull().default('balanced'),
+    ingredients: jsonb('ingredients'),
+    recipeMarkdown: text('recipe_markdown').notNull(),
+    nutritionEstimate: jsonb('nutrition_estimate'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
-    userCreatedIdx: index('coach_messages_user_created_idx').on(t.userId, t.createdAt),
+    userCreatedIdx: index('recipes_user_created_idx').on(t.userId, t.createdAt),
   }),
 )
 
-export const whatsappSessions = pgTable('whatsapp_sessions', {
+export const usageEvents = pgTable(
+  'usage_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    feature: usageFeatureEnum('feature').notNull(),
+    planSnapshot: planEnum('plan_snapshot').notNull().default('free'),
+    usageDate: date('usage_date').notNull(),
+    count: integer('count').notNull().default(0),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userFeatureDateUq: uniqueIndex('usage_events_user_feature_date_uq').on(
+      t.userId,
+      t.feature,
+      t.usageDate,
+    ),
+  }),
+)
+
+export const dailySummaries = pgTable(
+  'daily_summaries',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    summaryDate: date('summary_date').notNull(),
+    totalCalories: integer('total_calories').notNull().default(0),
+    totalProteinG: real('total_protein_g').notNull().default(0),
+    totalCarbsG: real('total_carbs_g').notNull().default(0),
+    totalFatG: real('total_fat_g').notNull().default(0),
+    offsideAmount: integer('offside_amount').notNull().default(0),
+    cimitSummary: jsonb('cimit_summary'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userDateUq: uniqueIndex('daily_summaries_user_date_uq').on(t.userId, t.summaryDate),
+  }),
+)
+
+export const subscriptions = pgTable(
+  'subscriptions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: text('provider').notNull().default('revenuecat'),
+    entitlement: subscriptionEntitlementEnum('entitlement').notNull(),
+    status: text('status').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    rawPayload: jsonb('raw_payload'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userEntitlementUq: uniqueIndex('subscriptions_user_entitlement_uq').on(
+      t.userId,
+      t.entitlement,
+    ),
+  }),
+)
+
+export const cimitMessages = pgTable(
+  'cimit_messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    type: cimitMessageTypeEnum('type').notNull().default('chat'),
+    role: text('role').notNull().default('model'),
+    content: text('content').notNull(),
+    tone: cimitToneEnum('tone'),
+    audioUrl: text('audio_url'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userCreatedIdx: index('cimit_messages_user_created_idx').on(t.userId, t.createdAt),
+  }),
+)
+
+export const savedLocations = pgTable('saved_locations', {
+  id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
-    .primaryKey()
+    .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  jid: text('jid'),
-  creds: jsonb('creds'),
-  keys: jsonb('keys').notNull().default({}),
-  linkedAt: timestamp('linked_at', { withTimezone: true }),
-  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
+  label: text('label').notNull(),
+  lat: real('lat').notNull(),
+  lng: real('lng').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-export const notificationPrefs = pgTable('notification_prefs', {
+export const mealPreferences = pgTable('meal_preferences', {
   userId: uuid('user_id')
     .primaryKey()
     .references(() => users.id, { onDelete: 'cascade' }),
-  mealReminder: boolean('meal_reminder').notNull().default(true),
-  reminderTime: time('reminder_time').notNull().default('20:00'),
-  goalAlerts: boolean('goal_alerts').notNull().default(true),
-  weeklyRecap: boolean('weekly_recap').notNull().default(true),
-  expoPushToken: text('expo_push_token'),
+  avoid: jsonb('avoid'),
+  dietType: text('diet_type'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+export const pantryItems = pgTable(
+  'pantry_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userNameIdx: index('pantry_items_user_name_idx').on(t.userId, t.name),
+  }),
+)
 
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type Food = typeof foods.$inferSelect
 export type NewFood = typeof foods.$inferInsert
-export type Meal = typeof meals.$inferSelect
-export type NewMeal = typeof meals.$inferInsert
+export type FoodLog = typeof foodLogs.$inferSelect
+export type NewFoodLog = typeof foodLogs.$inferInsert
 export type NutritionGoal = typeof nutritionGoals.$inferSelect
 export type NewNutritionGoal = typeof nutritionGoals.$inferInsert
-export type ChannelLink = typeof channelLinks.$inferSelect
-export type WhatsappSession = typeof whatsappSessions.$inferSelect
-export type NewWhatsappSession = typeof whatsappSessions.$inferInsert
-export type CoachMessage = typeof coachMessages.$inferSelect
-export type NewCoachMessage = typeof coachMessages.$inferInsert
+export type Recipe = typeof recipes.$inferSelect
+export type NewRecipe = typeof recipes.$inferInsert
+export type UsageEvent = typeof usageEvents.$inferSelect
+export type NewUsageEvent = typeof usageEvents.$inferInsert
+export type DailySummary = typeof dailySummaries.$inferSelect
+export type NewDailySummary = typeof dailySummaries.$inferInsert
+export type Subscription = typeof subscriptions.$inferSelect
+export type NewSubscription = typeof subscriptions.$inferInsert
+export type CimitMessage = typeof cimitMessages.$inferSelect
+export type NewCimitMessage = typeof cimitMessages.$inferInsert
+export type SavedLocation = typeof savedLocations.$inferSelect
+export type PantryItem = typeof pantryItems.$inferSelect

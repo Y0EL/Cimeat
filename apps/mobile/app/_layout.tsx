@@ -11,9 +11,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { useAuth } from '~/hooks/use-auth'
 import { useBootstrapSession } from '~/hooks/use-bootstrap-session'
-import { useRegisterPush } from '~/hooks/use-register-push'
 import { getFirebaseAuth } from '~/lib/firebase'
-import { configurePurchases } from '~/lib/revenuecat'
+import { configurePurchases, identifyUser, signOutPurchases } from '~/lib/revenuecat'
 import { EditMealProvider } from '~/lib/edit-store'
 import { LangProvider } from '~/lib/lang-context'
 import { ThemeProvider } from '~/lib/theme'
@@ -37,7 +36,11 @@ function AuthGate() {
   const [onboardingDone, setOnboardingDone] = useState(false)
 
   useBootstrapSession(Boolean(user))
-  useRegisterPush()
+
+  useEffect(() => {
+    if (user?.uid) identifyUser(user.uid).catch(() => {})
+    else signOutPurchases().catch(() => {})
+  }, [user?.uid])
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDING_KEY)
@@ -77,13 +80,9 @@ function AuthGate() {
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
-      <Stack.Screen
-        name="add-modal"
-        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-      />
+      <Stack.Screen name="cimit" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="profile" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="goals" options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="analytics" options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="recipe" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="foods" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen
         name="paywall"

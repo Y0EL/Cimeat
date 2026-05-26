@@ -70,7 +70,6 @@ export function parseQuickAddText(text: string): ParsedFoodEntry | null {
   const category = detectFoodCategory(trimmed)
   const mealType = detectMealType(trimmed)
 
-  // Strip the calorie token and meal-type words to derive the food name.
   let name = trimmed.replace(caloriePattern, '')
   for (const keywords of Object.values(mealTypeKeywords)) {
     for (const kw of keywords) {
@@ -80,7 +79,6 @@ export function parseQuickAddText(text: string): ParsedFoodEntry | null {
   name = name.replace(/\s+/g, ' ').trim()
   if (name.length === 0) return null
 
-  // High when we have both a name and an explicit calorie count.
   const confidence: ParsedFoodEntry['confidence'] =
     calories !== null ? 'high' : category !== 'other' ? 'medium' : 'low'
 

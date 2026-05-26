@@ -2,9 +2,12 @@ export type ErrorCode =
   | 'VALIDATION_ERROR'
   | 'UNAUTHORIZED'
   | 'PAYMENT_REQUIRED'
+  | 'QUOTA_EXCEEDED'
   | 'FORBIDDEN'
   | 'NOT_FOUND'
   | 'RATE_LIMITED'
+  | 'NOT_IMPLEMENTED'
+  | 'AI_ERROR'
   | 'INTERNAL'
 
 export class HttpError extends Error {

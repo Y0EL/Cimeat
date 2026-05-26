@@ -56,6 +56,8 @@ export async function updateUserProfile(
       ...(input.weightKg !== undefined ? { weightKg: input.weightKg } : {}),
       ...(input.activityLevel !== undefined ? { activityLevel: input.activityLevel } : {}),
       ...(input.goalType !== undefined ? { goalType: input.goalType } : {}),
+      ...(input.cimitTone !== undefined ? { cimitTone: input.cimitTone } : {}),
+      ...(input.defaultMode !== undefined ? { defaultMode: input.defaultMode } : {}),
     })
     .where(eq(users.id, userId))
     .returning()

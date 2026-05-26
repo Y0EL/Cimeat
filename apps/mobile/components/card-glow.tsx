@@ -126,7 +126,6 @@ function Spikes({ box, count, rInner, rOuter, duration, reverse, opacity, stops 
   )
 }
 
-// Palette Gemini sparkle: biru ke ungu ke magenta ke koral ke oranye ke kuning.
 const blobs: BlobSpec[] = [
   { color: '#4285f4', size: 380, from: { x: -100, y: -80 }, to: { x: 40, y: 30 }, duration: 5200 },
   { color: '#9b72cb', size: 340, from: { x: 110, y: -50 }, to: { x: 20, y: 70 }, duration: 6400 },

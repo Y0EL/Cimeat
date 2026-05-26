@@ -7,7 +7,6 @@ function todayUtc(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-/** Latest active nutrition goal (by startsAt desc) or null if none. */
 export async function getActiveGoalRow(
   db: Database,
   userId: string,
@@ -21,7 +20,6 @@ export async function getActiveGoalRow(
   return rows[0] ?? null
 }
 
-/** Returns the active goal as a DTO, falling back to a computed default. */
 export async function getActiveGoal(
   db: Database,
   userId: string,
@@ -40,7 +38,6 @@ export async function getActiveGoal(
   return profile ? computeGoalFromProfile(profile) : defaultGoal()
 }
 
-/** Insert a new goal row effective today. */
 export async function upsertGoal(
   db: Database,
   userId: string,
@@ -61,7 +58,6 @@ export async function upsertGoal(
   return rows[0]!
 }
 
-/** Persist a computed suggested goal for the user (used when profile metrics change). */
 export async function applySuggestedGoal(
   db: Database,
   userId: string,

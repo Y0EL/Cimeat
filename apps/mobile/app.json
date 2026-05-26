@@ -2,7 +2,7 @@
   "expo": {
     "name": "Cimeat",
     "slug": "cimeat",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "scheme": "cimeat",
     "userInterfaceStyle": "automatic",
@@ -37,7 +37,19 @@
       "expo-image-picker",
       "expo-web-browser",
       "expo-font",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Cimeat pakai lokasi lo buat saranin makanan di sekitar."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Cimeat pakai mikrofon buat catat makanan lewat suara."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false

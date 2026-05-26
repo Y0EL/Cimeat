@@ -22,9 +22,7 @@ export async function signInWithGoogleIdToken(idToken: string): Promise<User> {
   const result = await signInWithCredential(getFirebaseAuth(), credential)
   try {
     await identifyUser(result.user.uid)
-  } catch {
-    // RevenueCat identify is best effort, do not block auth
-  }
+  } catch {}
   return result.user
 }
 
@@ -32,9 +30,7 @@ export async function signOutUser(): Promise<void> {
   await signOut(getFirebaseAuth())
   try {
     await signOutPurchases()
-  } catch {
-    // best effort
-  }
+  } catch {}
 }
 
 export function getCurrentUser(): User | null {

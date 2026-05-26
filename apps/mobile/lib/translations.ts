@@ -2,10 +2,7 @@ export type Lang = 'id' | 'en' | 'zh'
 
 type S = Record<Lang, string>
 
-// Cimeat shared strings (food / calorie tracking domain).
-// Most screens use inline copy; these cover shared/common labels.
 export const T = {
-  // --- common ---
   common_cancel: { id: 'Batal', en: 'Cancel', zh: '取消' },
   common_save: { id: 'Simpan', en: 'Save', zh: '保存' },
   common_delete: { id: 'Hapus', en: 'Delete', zh: '删除' },
@@ -19,7 +16,6 @@ export const T = {
   common_edit: { id: 'Edit', en: 'Edit', zh: '编辑' },
   common_type_message: { id: 'Ketik pesan...', en: 'Type a message...', zh: '输入消息...' },
 
-  // --- brand / nav ---
   brand: { id: 'Cimeat', en: 'Cimeat', zh: 'Cimeat' },
   tab_home: { id: 'Beranda', en: 'Home', zh: '首页' },
   tab_diary: { id: 'Diary', en: 'Diary', zh: '记录' },
@@ -27,19 +23,16 @@ export const T = {
   tab_coach: { id: 'Coach', en: 'Coach', zh: '教练' },
   tab_settings: { id: 'Setelan', en: 'Settings', zh: '设置' },
 
-  // --- macros ---
   macro_calories: { id: 'Kalori', en: 'Calories', zh: '卡路里' },
   macro_protein: { id: 'Protein', en: 'Protein', zh: '蛋白质' },
   macro_carb: { id: 'Karbo', en: 'Carbs', zh: '碳水' },
   macro_fat: { id: 'Lemak', en: 'Fat', zh: '脂肪' },
 
-  // --- meal types ---
   meal_breakfast: { id: 'Sarapan', en: 'Breakfast', zh: '早餐' },
   meal_lunch: { id: 'Makan Siang', en: 'Lunch', zh: '午餐' },
   meal_dinner: { id: 'Makan Malam', en: 'Dinner', zh: '晚餐' },
   meal_snack: { id: 'Camilan', en: 'Snack', zh: '零食' },
 
-  // --- settings ---
   settings_title: { id: 'Setelan', en: 'Settings', zh: '设置' },
   settings_guest: { id: 'Tamu Cimeat', en: 'Cimeat Guest', zh: 'Cimeat 访客' },
   settings_theme: { id: 'Tema', en: 'Theme', zh: '主题' },

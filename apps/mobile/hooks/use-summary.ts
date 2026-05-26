@@ -27,7 +27,6 @@ export function useUpdateProfile() {
       apiFetch<UserProfile>('/v1/profile', { method: 'PATCH', body: JSON.stringify(input) }),
     onSuccess: (profile) => {
       qc.setQueryData(['profile'], profile)
-      // Updating body metrics can recompute the goal server-side.
       qc.invalidateQueries({ queryKey: ['goals'] })
       qc.invalidateQueries({ queryKey: ['summary'] })
     },

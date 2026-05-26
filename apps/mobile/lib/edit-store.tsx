@@ -1,15 +1,15 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
-import type { MealDto } from '@cimeat/types'
+import type { FoodLogDto } from '@cimeat/types'
 
 type EditContextValue = {
-  editing: MealDto | null
-  setEditing: (m: MealDto | null) => void
+  editing: FoodLogDto | null
+  setEditing: (m: FoodLogDto | null) => void
 }
 
 const EditContext = createContext<EditContextValue | null>(null)
 
 export function EditMealProvider({ children }: { children: ReactNode }) {
-  const [editing, setEditing] = useState<MealDto | null>(null)
+  const [editing, setEditing] = useState<FoodLogDto | null>(null)
   const value = useMemo(() => ({ editing, setEditing }), [editing])
   return <EditContext.Provider value={value}>{children}</EditContext.Provider>
 }

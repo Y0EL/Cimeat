@@ -25,9 +25,7 @@ export default {
         warning: { DEFAULT: '#f59e0b', light: '#fbbf24' },
         danger: { DEFAULT: '#ef4444', light: '#f87171' },
         info: { DEFAULT: '#0ea5e9', light: '#38bdf8' },
-        // Warm cream surfaces for light mode
         cream: { DEFAULT: '#fffaf5', soft: '#fff7ed' },
-        // Macro palette (kept consistent across charts/rings)
         macro: {
           calories: '#f97316',
           protein: '#f43f5e',

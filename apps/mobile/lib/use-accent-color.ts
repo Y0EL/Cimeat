@@ -10,6 +10,5 @@ export function useIsDark(): boolean {
 }
 
 export function useAccentColor(): string {
-  // Orange brand accent. Slightly brighter in dark mode for contrast.
   return useIsDark() ? '#fb923c' : '#ea580c'
 }
