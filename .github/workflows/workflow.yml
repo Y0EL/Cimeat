@@ -19,20 +19,3 @@ jobs:
       - run: flyctl deploy --remote-only --app cimeat-api
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-  expo:
-    name: Mobile
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: npm install -g eas-cli
-      - run: eas update --auto --non-interactive
-        working-directory: apps/mobile
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
