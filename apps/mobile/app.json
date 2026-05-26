@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "Cimeat",
+    "slug": "cimeat",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "cimeat",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#fff7ed"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.cimeat.app"
+    },
+    "android": {
+      "package": "com.cimeat.app",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#f97316"
+      },
+      "softwareKeyboardLayoutMode": "pan"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-dev-client",
+      "expo-router",
+      "expo-image-picker",
+      "expo-web-browser",
+      "expo-font",
+      "@react-native-google-signin/google-signin"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "09668b29-3ef2-405d-8a06-c6fbb04c8c6a"
+      }
+    },
+    "owner": "y0el",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/09668b29-3ef2-405d-8a06-c6fbb04c8c6a"
+    }
+  }
+}

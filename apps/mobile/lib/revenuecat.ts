@@ -1,0 +1,153 @@
+import { router } from 'expo-router'
+import { Platform } from 'react-native'
+import Purchases, {
+  LOG_LEVEL,
+  type CustomerInfo,
+  type PurchasesError,
+  type PurchasesOffering,
+  type PurchasesPackage,
+} from 'react-native-purchases'
+
+export const CIMEAT_PRO_ENTITLEMENT = 'Cimeat Pro'
+
+export type CimeatPlan = 'lifetime' | 'yearly' | 'monthly'
+
+export type PaywallResult = 'NOT_PRESENTED' | 'CANCELLED' | 'PURCHASED' | 'RESTORED' | 'ERROR'
+
+export type PurchaseOutcome =
+  | { ok: true; info: CustomerInfo }
+  | { ok: false; userCancelled: boolean; code: string; message: string }
+
+let configured = false
+
+export function configurePurchases(apiKey: string) {
+  if (configured) return
+  if (!apiKey) {
+    console.warn('RevenueCat API key missing, skipping configure')
+    return
+  }
+  if (Platform.OS !== 'ios' && Platform.OS !== 'android') return
+  try {
+    Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.WARN)
+    Purchases.configure({ apiKey })
+    configured = true
+  } catch (err) {
+    // Expo Go gak punya modul native RevenueCat. Skip diam-diam, fitur Pro mati di Expo Go.
+    console.warn('RevenueCat configure failed (probably Expo Go):', err)
+  }
+}
+
+export function isConfigured() {
+  return configured
+}
+
+export async function identifyUser(firebaseUid: string) {
+  if (!configured) return
+  await Purchases.logIn(firebaseUid)
+}
+
+export async function signOutPurchases() {
+  if (!configured) return
+  await Purchases.logOut()
+}
+
+export async function getCustomerInfo(): Promise<CustomerInfo | null> {
+  if (!configured) return null
+  return Purchases.getCustomerInfo()
+}
+
+export async function hasCimeatPro(): Promise<boolean> {
+  const info = await getCustomerInfo()
+  if (!info) return false
+  return Boolean(info.entitlements.active[CIMEAT_PRO_ENTITLEMENT])
+}
+
+export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
+  if (!configured) return null
+  const offerings = await Purchases.getOfferings()
+  return offerings.current ?? null
+}
+
+export function pickPackage(
+  offering: PurchasesOffering | null,
+  plan: CimeatPlan,
+): PurchasesPackage | null {
+  if (!offering) return null
+  if (plan === 'lifetime') return offering.lifetime ?? null
+  if (plan === 'yearly') return offering.annual ?? null
+  if (plan === 'monthly') return offering.monthly ?? null
+  return null
+}
+
+export async function purchasePackage(pkg: PurchasesPackage): Promise<PurchaseOutcome> {
+  try {
+    const { customerInfo } = await Purchases.purchasePackage(pkg)
+    return { ok: true, info: customerInfo }
+  } catch (err) {
+    const e = err as PurchasesError
+    return {
+      ok: false,
+      userCancelled: Boolean(e.userCancelled),
+      code: String(e.code ?? 'UNKNOWN'),
+      message: e.message ?? 'Pembelian gagal',
+    }
+  }
+}
+
+export async function restorePurchases(): Promise<PurchaseOutcome> {
+  try {
+    const info = await Purchases.restorePurchases()
+    return { ok: true, info }
+  } catch (err) {
+    const e = err as PurchasesError
+    return {
+      ok: false,
+      userCancelled: false,
+      code: String(e.code ?? 'UNKNOWN'),
+      message: e.message ?? 'Restore gagal',
+    }
+  }
+}
+
+export async function presentPaywall(): Promise<PaywallResult> {
+  router.push('/paywall')
+  return 'NOT_PRESENTED'
+}
+
+export async function presentPaywallIfNeeded(): Promise<PaywallResult> {
+  router.push('/paywall')
+  return 'NOT_PRESENTED'
+}
+
+export async function presentCustomerCenter(): Promise<void> {
+  router.push('/paywall')
+}
+
+export type ProStatus = { isPro: boolean; expiresAt: Date | null }
+
+export function subscribeToProStatus(callback: (status: ProStatus) => void): () => void {
+  if (!configured) {
+    callback({ isPro: false, expiresAt: null })
+    return () => {}
+  }
+  const apply = (info: CustomerInfo) => {
+    const ent = info.entitlements.active[CIMEAT_PRO_ENTITLEMENT]
+    callback({
+      isPro: Boolean(ent),
+      expiresAt: ent?.expirationDate ? new Date(ent.expirationDate) : null,
+    })
+  }
+  Purchases.getCustomerInfo()
+    .then(apply)
+    .catch(() => {})
+  Purchases.addCustomerInfoUpdateListener(apply)
+  return () => Purchases.removeCustomerInfoUpdateListener(apply)
+}
+
+export function paywallResultToText(result: PaywallResult): string {
+  if (result === 'PURCHASED') return 'Sip, Cimeat Pro lo aktif sekarang.'
+  if (result === 'RESTORED') return 'Akses Pro lo udah balik.'
+  if (result === 'CANCELLED') return 'Oke, bisa coba lagi kapan aja.'
+  if (result === 'NOT_PRESENTED') return 'Lo udah Pro, gak perlu paywall.'
+  return 'Ada error, coba lagi yuk.'
+}

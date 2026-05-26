@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "cimeat-id"
+  },
+  "targets": {
+    "cimeat-id": {
+      "hosting": {
+        "marketing": ["cimeat-ya"]
+      }
+    }
+  }
+}

@@ -1,42 +1,79 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+node_modules
+dist
+build
+.next
+.expo
+.expo-shared
+.turbo
+coverage
+*.tsbuildinfo
 
-# dependencies
-node_modules/
+.env
+.env.local
+.env.*.local
+!.env.example
 
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
+.wa-session
+.session
 
-# Native
-.kotlin/
-*.orig.*
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+.DS_Store
+Thumbs.db
+
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+
+.pnpm-store
+
+ios/Pods
+ios/build
+android/build
+android/app/build
+android/.gradle
+*.keystore
+!debug.keystore
+
+.expo/web-build
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-app-example
-.next
-.env
-__pycache__
+*.orig.*
+google-services.json
+GoogleService-Info.plist
+.husky
+.agents
+.impeccable
+DESIGN.md
+PLAN.md
+RULES.md
+docs.txt
+DEV.md
+.env.fly
+base.md
+skills-lock.json
+scripts/*
+.claude
+.gemini
+.anthropic
+.azure
+.aws
+.gcp
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/extensions.json
+.vscode/settings.json
+.idea/*
+*.iml
+*.iws
+*.sln
+.vscode
+.github_token
