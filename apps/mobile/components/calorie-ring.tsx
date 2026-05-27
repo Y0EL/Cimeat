@@ -7,6 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg'
+import { useThemeColors } from '~/lib/theme'
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 
@@ -18,6 +19,7 @@ type Props = {
 }
 
 export function CalorieRing({ consumed, goal, size = 220, strokeWidth = 18 }: Props) {
+  const c = useThemeColors()
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
   const safeGoal = goal > 0 ? goal : 1
@@ -66,15 +68,13 @@ export function CalorieRing({ consumed, goal, size = 220, strokeWidth = 18 }: Pr
         />
       </Svg>
       <View style={{ alignItems: 'center' }}>
-        <Text
-          style={{ fontFamily: 'Outfit_900Black', fontSize: 48, color: '#1A1C1E', fontVariant: ['tabular-nums'] }}
-        >
+        <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 48, color: c.text, fontVariant: ['tabular-nums'] }}>
           {Math.abs(remaining).toLocaleString('id-ID')}
         </Text>
-        <Text style={{ marginTop: 4, fontFamily: 'Outfit_700Bold', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8886' }}>
+        <Text style={{ marginTop: 4, fontFamily: 'Outfit_700Bold', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: c.textSub }}>
           {over ? 'kkal lebih' : 'kkal tersisa'}
         </Text>
-        <Text style={{ marginTop: 8, fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>
+        <Text style={{ marginTop: 8, fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>
           {Math.round(consumed).toLocaleString('id-ID')} / {Math.round(goal).toLocaleString('id-ID')}
         </Text>
       </View>

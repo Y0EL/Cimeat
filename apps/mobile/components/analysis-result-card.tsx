@@ -2,6 +2,7 @@ import { Sparkles } from 'lucide-react-native'
 import { Text, TextInput, View } from 'react-native'
 import type { FoodAnalysis } from '@cimeat/types'
 import { TtsButton } from '~/components/cimit/tts-button'
+import { useThemeColors } from '~/lib/theme'
 
 export type EditableAnalysis = {
   food_name: string
@@ -18,13 +19,13 @@ function scoreColor(score: number): { bg: string; fg: string } {
 }
 
 export function HealthScoreBadge({ score }: { score: number }) {
-  const c = scoreColor(score)
+  const col = scoreColor(score)
   return (
-    <View style={{ alignItems: 'center', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: c.bg }}>
-      <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 20, color: c.fg }}>
+    <View style={{ alignItems: 'center', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: col.bg }}>
+      <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 20, color: col.fg }}>
         {score}
       </Text>
-      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 9, letterSpacing: 0.8, textTransform: 'uppercase', color: c.fg }}>
+      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 9, letterSpacing: 0.8, textTransform: 'uppercase', color: col.fg }}>
         skor sehat
       </Text>
     </View>
@@ -39,12 +40,14 @@ type Props = {
 }
 
 export function AnalysisResultCard({ analysis, edit, onChange, transcript }: Props) {
+  const c = useThemeColors()
+
   return (
-    <View style={{ borderRadius: 24, backgroundColor: '#FFFFFF', padding: 16, shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
+    <View style={{ borderRadius: 24, backgroundColor: c.card, padding: 16, shadowColor: c.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
       {transcript ? (
-        <View style={{ marginBottom: 12, borderRadius: 16, backgroundColor: '#F8F7F4', paddingHorizontal: 12, paddingVertical: 8 }}>
-          <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase', color: '#8A8886' }}>Yang lo bilang</Text>
-          <Text style={{ marginTop: 2, fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#1A1C1E' }}>
+        <View style={{ marginBottom: 12, borderRadius: 16, backgroundColor: c.cardAlt, paddingHorizontal: 12, paddingVertical: 8 }}>
+          <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase', color: c.textSub }}>Yang lo bilang</Text>
+          <Text style={{ marginTop: 2, fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.text }}>
             &ldquo;{transcript}&rdquo;
           </Text>
         </View>
@@ -52,13 +55,14 @@ export function AnalysisResultCard({ analysis, edit, onChange, transcript }: Pro
 
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
         <View style={{ flex: 1 }}>
-          <Text style={{ marginBottom: 4, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: '#8A8886' }}>
+          <Text style={{ marginBottom: 4, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: c.textSub }}>
             Makanan
           </Text>
           <TextInput
             value={edit.food_name}
             onChangeText={(v) => onChange({ food_name: v })}
-            style={{ borderRadius: 14, backgroundColor: '#F8F7F4', paddingHorizontal: 12, paddingVertical: 8, fontFamily: 'Outfit_700Bold', fontSize: 15, color: '#1A1C1E' }}
+            style={{ borderRadius: 14, backgroundColor: c.cardAlt, paddingHorizontal: 12, paddingVertical: 8, fontFamily: 'Outfit_700Bold', fontSize: 15, color: c.text }}
+            placeholderTextColor={c.textSub}
           />
         </View>
         <HealthScoreBadge score={analysis.health_score} />
@@ -72,10 +76,10 @@ export function AnalysisResultCard({ analysis, edit, onChange, transcript }: Pro
       </View>
 
       <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#8A8886' }}>
+        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: c.textSub }}>
           Estimasi {analysis.estimated_weight_g} g · range {analysis.calorie_range.min}-{analysis.calorie_range.max} kkal
         </Text>
-        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#8A8886' }}>
+        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: c.textSub }}>
           yakin {Math.round(analysis.confidence_score * 100)}%
         </Text>
       </View>
@@ -102,16 +106,18 @@ function MacroField({
   value: number
   onChange: (n: number) => void
 }) {
+  const c = useThemeColors()
   return (
     <View style={{ flex: 1 }}>
-      <Text style={{ marginBottom: 4, textAlign: 'center', fontFamily: 'Outfit_700Bold', fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase', color: '#8A8886' }}>
+      <Text style={{ marginBottom: 4, textAlign: 'center', fontFamily: 'Outfit_700Bold', fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase', color: c.textSub }}>
         {label}
       </Text>
       <TextInput
         value={String(value)}
         onChangeText={(v) => onChange(Number(v.replace(/[^0-9.]/g, '')) || 0)}
         keyboardType="decimal-pad"
-        style={{ borderRadius: 14, backgroundColor: '#F8F7F4', paddingHorizontal: 8, paddingVertical: 8, textAlign: 'center', fontFamily: 'Outfit_700Bold', fontSize: 13, color: '#1A1C1E' }}
+        style={{ borderRadius: 14, backgroundColor: c.cardAlt, paddingHorizontal: 8, paddingVertical: 8, textAlign: 'center', fontFamily: 'Outfit_700Bold', fontSize: 13, color: c.text }}
+        placeholderTextColor={c.textSub}
       />
     </View>
   )

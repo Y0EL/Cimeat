@@ -83,7 +83,7 @@ function AuthGate() {
 
   return (
     <Stack screenOptions={{ headerShown: false, animation: 'fade', animationDuration: 200 }}>
-      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(auth)/login" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
       <Stack.Screen name="cimit" options={{ animation: 'slide_from_right' }} />

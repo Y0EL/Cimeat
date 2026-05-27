@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native'
 import { MACRO_COLORS } from '~/lib/categories'
+import { useThemeColors } from '~/lib/theme'
 
 type MacroKey = 'protein' | 'carb' | 'fat'
 
@@ -10,21 +11,22 @@ const LABELS: Record<MacroKey, string> = {
 }
 
 export function MacroBar({ macro, value, goal }: { macro: MacroKey; value: number; goal: number }) {
+  const c = useThemeColors()
   const color = MACRO_COLORS[macro]
   const pct = goal > 0 ? Math.min((value / goal) * 100, 100) : 0
 
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, color: '#1A1C1E' }}>
+        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, color: c.text }}>
           {LABELS[macro]}
         </Text>
-        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 10, color: '#8A8886', fontVariant: ['tabular-nums'] }}>
+        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 10, color: c.textSub, fontVariant: ['tabular-nums'] }}>
           {Math.round(value)}/{Math.round(goal)}g
         </Text>
       </View>
-      <View style={{ marginTop: 6, height: 6, overflow: 'hidden', borderRadius: 3, backgroundColor: '#F0EEE9' }}>
-        <View style={{ width: `${pct}%`, height: '100%', backgroundColor: color, borderRadius: 3 }} />
+      <View style={{ marginTop: 6, height: 6, overflow: 'hidden', borderRadius: 3, backgroundColor: c.border }}>
+        <View style={{ width: `${pct}%` as `${number}%`, height: '100%', backgroundColor: color, borderRadius: 3 }} />
       </View>
     </View>
   )
