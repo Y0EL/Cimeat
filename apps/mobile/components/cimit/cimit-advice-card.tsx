@@ -1,8 +1,10 @@
 import { useRouter } from 'expo-router'
 import { ChevronRight, Flame, Sparkles } from 'lucide-react-native'
-import { ActivityIndicator, Pressable, Text, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
+import Animated, { FadeIn } from 'react-native-reanimated'
 import type { CimitTone } from '@cimeat/types'
 import { TtsButton } from '~/components/cimit/tts-button'
+import { SkeletonLines } from '~/components/motion/skeleton'
 
 type Props = {
   message: string | undefined
@@ -78,19 +80,14 @@ export function CimitAdviceCard({ message, loading, isRoast, tone }: Props) {
 
         <View style={{ marginTop: 12, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: 'rgba(255,255,255,0.07)' }}>
           {loading ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 }}>
-              <ActivityIndicator size="small" color="#FF6B35" />
-              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#8A8886' }}>
-                Cimit lagi mikir...
-              </Text>
-            </View>
+            <SkeletonLines tint="rgba(255,255,255,0.1)" />
           ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+            <Animated.View entering={FadeIn.duration(300)} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
               <Text style={{ flex: 1, fontFamily: 'Outfit_400Regular', fontSize: 14, lineHeight: 22, color: '#F8F7F4' }}>
                 {message ?? 'Catat makan lo dulu biar Cimit bisa kasih saran yang pas.'}
               </Text>
               {message ? <TtsButton text={message} tone={tone} /> : null}
-            </View>
+            </Animated.View>
           )}
         </View>
       </View>
