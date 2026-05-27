@@ -60,6 +60,8 @@ const MEAL_TYPES: { key: MealType; label: string }[] = [
   { key: 'snack', label: 'Camilan' },
 ]
 
+const WAVE_HEIGHTS = [18, 32, 44, 28, 52, 36, 48, 24, 56, 40, 60, 32, 48, 22, 44, 30, 52, 20, 38, 28]
+
 function nowIso(): string {
   return new Date().toISOString()
 }
@@ -75,7 +77,6 @@ function toEditable(a: FoodAnalysis): EditableAnalysis {
 }
 
 function WaveBar({ active, delay, maxH }: { active: boolean; delay: number; maxH: number }) {
-  const c = useThemeColors()
   const h = useSharedValue(4)
 
   useEffect(() => {
@@ -84,8 +85,8 @@ function WaveBar({ active, delay, maxH }: { active: boolean; delay: number; maxH
         delay,
         withRepeat(
           withSequence(
-            withTiming(maxH, { duration: 180 + delay * 0.4 }),
-            withTiming(4, { duration: 180 + delay * 0.4 }),
+            withTiming(maxH, { duration: 200 + delay * 0.3 }),
+            withTiming(4, { duration: 200 + delay * 0.3 }),
           ),
           -1,
           false,
@@ -98,15 +99,8 @@ function WaveBar({ active, delay, maxH }: { active: boolean; delay: number; maxH
   }, [active, h, delay, maxH])
 
   const style = useAnimatedStyle(() => ({ height: h.value }))
-
-  return (
-    <Animated.View
-      style={[{ width: 4, borderRadius: 2, backgroundColor: c.orange }, style]}
-    />
-  )
+  return <Animated.View style={[{ width: 3, borderRadius: 2, backgroundColor: '#818cf8' }, style]} />
 }
-
-const WAVE_HEIGHTS = [18, 32, 44, 28, 52, 36, 48, 24, 56, 40, 60, 32, 48, 22, 44, 30, 52, 20, 38, 28]
 
 function Waveform({ active, analyzing }: { active: boolean; analyzing: boolean }) {
   const pulseH = useSharedValue(4)
@@ -124,127 +118,63 @@ function Waveform({ active, analyzing }: { active: boolean; analyzing: boolean }
     }
   }, [analyzing, pulseH])
 
-  if (analyzing) {
-    return (
-      <View style={{ flexDirection: 'row', gap: 4, alignItems: 'flex-end', height: 60, justifyContent: 'center' }}>
-        {Array.from({ length: 20 }).map((_, i) => {
-          const style = useAnimatedStyle(() => ({ height: pulseH.value }))
-          return (
-            <Animated.View
-              key={i}
-              style={[{ width: 4, borderRadius: 2, backgroundColor: '#FF6B35', opacity: 0.4 + (i % 3) * 0.2 }, style]}
-            />
-          )
-        })}
-      </View>
-    )
-  }
-
   return (
-    <View style={{ flexDirection: 'row', gap: 4, alignItems: 'flex-end', height: 60, justifyContent: 'center' }}>
+    <View style={{ flexDirection: 'row', gap: 3, alignItems: 'flex-end', height: 64, justifyContent: 'center', paddingHorizontal: 8 }}>
       {WAVE_HEIGHTS.map((maxH, i) => (
-        <WaveBar key={i} active={active} delay={i * 40} maxH={maxH} />
+        <WaveBar key={i} active={active && !analyzing} delay={i * 35} maxH={maxH} />
       ))}
     </View>
   )
 }
 
-function AnimatedOptionCard({
+function ModeTab({
   icon: Icon,
-  title,
-  subtitle,
+  label,
   active,
-  onPress,
   color,
+  onPress,
 }: {
   icon: typeof Camera
-  title: string
-  subtitle: string
+  label: string
   active: boolean
-  onPress: () => void
   color: string
+  onPress: () => void
 }) {
   const c = useThemeColors()
   const iconScale = useSharedValue(1)
-  const cardScale = useSharedValue(1)
 
   useEffect(() => {
     if (active) {
       iconScale.value = withSequence(
-        withSpring(1.45, { damping: 5, stiffness: 450 }),
-        withSpring(1, { damping: 12, stiffness: 200 }),
-      )
-      cardScale.value = withSequence(
-        withSpring(0.96, { damping: 10 }),
+        withSpring(1.5, { damping: 5, stiffness: 500 }),
         withSpring(1, { damping: 12 }),
       )
     }
-  }, [active, iconScale, cardScale])
+  }, [active, iconScale])
 
-  const iconStyle = useAnimatedStyle(() => ({ transform: [{ scale: iconScale.value }] }))
-  const cardStyle = useAnimatedStyle(() => ({ transform: [{ scale: cardScale.value }] }))
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: iconScale.value }] }))
 
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.9 : 1 })}
+      style={({ pressed }) => ({
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        borderRadius: 18,
+        backgroundColor: active ? color : 'transparent',
+        opacity: pressed ? 0.85 : 1,
+      })}
     >
-      <Animated.View
-        style={[
-          {
-            borderRadius: 28,
-            backgroundColor: active ? color : c.card,
-            padding: 20,
-            alignItems: 'center',
-            borderWidth: active ? 0 : 1,
-            borderColor: c.border,
-            shadowColor: active ? color : c.shadow,
-            shadowOffset: { width: 0, height: active ? 8 : 2 },
-            shadowOpacity: active ? 0.35 : 0.06,
-            shadowRadius: active ? 20 : 8,
-            elevation: active ? 8 : 2,
-          },
-          cardStyle,
-        ]}
-      >
-        <Animated.View
-          style={[
-            {
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: active ? 'rgba(255,255,255,0.22)' : c.cardAlt,
-              alignItems: 'center',
-              justifyContent: 'center',
-            },
-            iconStyle,
-          ]}
-        >
-          <Icon size={26} color={active ? '#ffffff' : color} />
-        </Animated.View>
-        <Text
-          style={{
-            marginTop: 12,
-            fontFamily: 'Outfit_900Black',
-            fontSize: 16,
-            color: active ? '#ffffff' : c.text,
-          }}
-        >
-          {title}
-        </Text>
-        <Text
-          style={{
-            marginTop: 4,
-            fontFamily: 'Outfit_400Regular',
-            fontSize: 12,
-            textAlign: 'center',
-            lineHeight: 16,
-            color: active ? 'rgba(255,255,255,0.75)' : c.textSub,
-          }}
-        >
-          {subtitle}
-        </Text>
+      <Animated.View style={animStyle}>
+        <Icon size={18} color={active ? '#ffffff' : c.textSub} />
       </Animated.View>
+      <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 14, color: active ? '#ffffff' : c.textSub }}>
+        {label}
+      </Text>
     </Pressable>
   )
 }
@@ -268,15 +198,10 @@ export default function LogTab() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top']}>
       <ScreenFade>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
-          <View>
-            <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub }}>
-              {mealType === 'breakfast' ? 'Sarapan' : mealType === 'lunch' ? 'Makan siang' : mealType === 'dinner' ? 'Makan malam' : 'Camilan'}
-            </Text>
-            <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 26, color: c.text, marginTop: 2 }}>
-              Catat makanan
-            </Text>
-          </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
+          <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 24, color: c.text }}>
+            Catat makanan
+          </Text>
           {mode === 'foto' ? (
             <QuotaBadge feature="vision" />
           ) : mode === 'suara' ? (
@@ -284,11 +209,7 @@ export default function LogTab() {
           ) : null}
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}
-        >
+        <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}>
           {MEAL_TYPES.map((m) => {
             const active = mealType === m.key
             return (
@@ -298,9 +219,9 @@ export default function LogTab() {
                 style={({ pressed }) => ({
                   borderRadius: 99,
                   backgroundColor: active ? c.orangeSoft : c.card,
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderWidth: active ? 1.5 : 1,
+                  paddingHorizontal: 14,
+                  paddingVertical: 7,
+                  borderWidth: 1.5,
                   borderColor: active ? c.orange : c.border,
                   opacity: pressed ? 0.75 : 1,
                 })}
@@ -311,7 +232,7 @@ export default function LogTab() {
               </Pressable>
             )
           })}
-        </ScrollView>
+        </View>
 
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           {result ? (
@@ -328,45 +249,38 @@ export default function LogTab() {
               style={{ flex: 1 }}
               contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
               keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
             >
-              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-                <AnimatedOptionCard
-                  icon={Camera}
-                  title="Foto"
-                  subtitle="Foto makanan, deteksi instan"
-                  active={mode === 'foto'}
-                  onPress={() => setMode('foto')}
-                  color="#FF6B35"
-                />
-                <AnimatedOptionCard
-                  icon={Mic}
-                  title="Suara"
-                  subtitle="Sebut aja makanan lo"
-                  active={mode === 'suara'}
-                  onPress={() => setMode('suara')}
-                  color="#818cf8"
-                />
-              </View>
+              <View style={{ borderRadius: 28, backgroundColor: c.card, overflow: 'hidden', shadowColor: c.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 4 }}>
+                <View style={{ flexDirection: 'row', gap: 4, padding: 6, backgroundColor: c.cardAlt }}>
+                  <ModeTab icon={Camera} label="Foto" active={mode === 'foto'} color="#FF6B35" onPress={() => setMode('foto')} />
+                  <ModeTab icon={Mic} label="Suara" active={mode === 'suara'} color="#818cf8" onPress={() => setMode('suara')} />
+                </View>
 
-              {mode === 'foto' ? (
-                <FotoContent mealType={mealType} onResult={(r) => { setResult(r); setEdit(toEditable(r)) }} />
-              ) : mode === 'suara' ? (
-                <SuaraContent mealType={mealType} onResult={(r) => { setResult(r); setEdit(toEditable(r)) }} />
-              ) : (
-                <ManualContent mealType={mealType} />
-              )}
+                <View style={{ padding: 20 }}>
+                  {mode === 'foto' ? (
+                    <FotoContent mealType={mealType} onResult={(r) => { setResult(r); setEdit(toEditable(r)) }} />
+                  ) : mode === 'suara' ? (
+                    <SuaraContent mealType={mealType} onResult={(r) => { setResult(r); setEdit(toEditable(r)) }} />
+                  ) : null}
+                </View>
+              </View>
 
               <Pressable
                 onPress={() => setMode('manual')}
-                style={({ pressed }) => ({ marginTop: 20, alignItems: 'center', opacity: pressed ? 0.5 : 1 })}
+                style={({ pressed }) => ({ marginTop: 16, alignItems: 'center', paddingVertical: 14, borderRadius: 20, backgroundColor: c.card, opacity: pressed ? 0.6 : 1 })}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <TypeIcon size={14} color={c.textSub} />
-                  <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub }}>
-                    Catat manual
-                  </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TypeIcon size={15} color={c.textSub} />
+                  <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: c.textSub }}>Input manual</Text>
                 </View>
               </Pressable>
+
+              {mode === 'manual' ? (
+                <View style={{ marginTop: 12 }}>
+                  <ManualContent mealType={mealType} />
+                </View>
+              ) : null}
             </ScrollView>
           )}
         </KeyboardAvoidingView>
@@ -418,10 +332,10 @@ function FotoContent({
 
   if (analyze.isPending && preview) {
     return (
-      <View style={{ borderRadius: 28, backgroundColor: c.card, padding: 24, alignItems: 'center' }}>
-        <Image source={{ uri: preview }} style={{ width: '100%', height: 160, borderRadius: 20, marginBottom: 16 }} resizeMode="cover" />
+      <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+        <Image source={{ uri: preview }} style={{ width: '100%', height: 140, borderRadius: 16, marginBottom: 16 }} resizeMode="cover" />
         <ActivityIndicator size="large" color={c.orange} />
-        <Text style={{ marginTop: 12, fontFamily: 'Outfit_400Regular', fontSize: 14, color: c.textSub }}>
+        <Text style={{ marginTop: 10, fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub }}>
           Cimit lagi nganalisa...
         </Text>
       </View>
@@ -429,10 +343,18 @@ function FotoContent({
   }
 
   return (
-    <View style={{ borderRadius: 28, backgroundColor: c.card, padding: 20, gap: 12 }}>
-      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 13, color: c.textSub, textAlign: 'center', lineHeight: 18 }}>
-        Pilih sumber foto untuk deteksi otomatis
-      </Text>
+    <View style={{ gap: 10 }}>
+      <View style={{ alignItems: 'center', paddingBottom: 8 }}>
+        <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFF3EE', alignItems: 'center', justifyContent: 'center' }}>
+          <Camera size={26} color="#FF6B35" />
+        </View>
+        <Text style={{ marginTop: 10, fontFamily: 'Outfit_700Bold', fontSize: 15, color: c.text }}>
+          Foto makanan lo
+        </Text>
+        <Text style={{ marginTop: 4, fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub, textAlign: 'center' }}>
+          Cimit deteksi & estimasi kalori otomatis
+        </Text>
+      </View>
       <Pressable
         onPress={() => pick('camera')}
         style={({ pressed }) => ({
@@ -441,13 +363,13 @@ function FotoContent({
           justifyContent: 'center',
           gap: 10,
           borderRadius: 99,
-          backgroundColor: c.orange,
-          paddingVertical: 14,
+          backgroundColor: '#FF6B35',
+          paddingVertical: 13,
           opacity: pressed ? 0.85 : 1,
         })}
       >
-        <Camera size={20} color="#ffffff" />
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: '#ffffff' }}>Buka kamera</Text>
+        <Camera size={18} color="#ffffff" />
+        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#ffffff' }}>Buka kamera</Text>
       </Pressable>
       <Pressable
         onPress={() => pick('gallery')}
@@ -460,12 +382,12 @@ function FotoContent({
           backgroundColor: c.cardAlt,
           borderWidth: 1,
           borderColor: c.border,
-          paddingVertical: 14,
+          paddingVertical: 13,
           opacity: pressed ? 0.8 : 1,
         })}
       >
-        <ImageIcon size={20} color={c.orange} />
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: c.orange }}>Pilih dari galeri</Text>
+        <ImageIcon size={18} color={c.orange} />
+        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.orange }}>Pilih dari galeri</Text>
       </Pressable>
     </View>
   )
@@ -482,9 +404,13 @@ function SuaraContent({
   const rec = useAudioRecording()
   const analyze = useAnalyzeAudio()
   const { handleError } = useSaveFlow()
+  const btnScale = useSharedValue(1)
+
+  const btnStyle = useAnimatedStyle(() => ({ transform: [{ scale: btnScale.value }] }))
 
   async function start() {
     try {
+      btnScale.value = withSequence(withSpring(0.88, { damping: 10 }), withSpring(1, { damping: 12 }))
       await rec.start()
     } catch {
       Alert.alert('Izin mic', 'Cimeat butuh akses mikrofon buat catat pakai suara.')
@@ -493,6 +419,7 @@ function SuaraContent({
 
   async function stop() {
     try {
+      btnScale.value = withSequence(withSpring(0.88, { damping: 10 }), withSpring(1, { damping: 12 }))
       const clip = await rec.stop()
       if (!clip) return
       track('log_food_audio')
@@ -503,53 +430,58 @@ function SuaraContent({
     }
   }
 
-  const isActive = rec.isRecording || analyze.isPending
-
   return (
-    <View style={{ borderRadius: 28, backgroundColor: c.card, padding: 24, alignItems: 'center' }}>
+    <View style={{ alignItems: 'center', paddingVertical: 8, gap: 16 }}>
       <Waveform active={rec.isRecording} analyzing={analyze.isPending} />
 
-      <Text style={{ marginTop: 16, fontFamily: 'Outfit_900Black', fontSize: 18, color: c.text, textAlign: 'center' }}>
-        {rec.isRecording
-          ? `Lagi ngerekam · ${rec.durationSec}s`
-          : analyze.isPending
-            ? 'Cimit lagi dengerin...'
-            : 'Ceritain makanan lo'}
-      </Text>
-      <Text style={{ marginTop: 6, fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub, textAlign: 'center', lineHeight: 18 }}>
-        {rec.isRecording
-          ? 'Tap berhenti kalau udah selesai ngomong.'
-          : analyze.isPending
-            ? 'Proses biasanya 5-10 detik.'
-            : 'Contoh: "Tadi gue makan nasi padang sama rendang"'}
-      </Text>
+      <View style={{ alignItems: 'center' }}>
+        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: c.text }}>
+          {rec.isRecording
+            ? `Merekam · ${rec.durationSec}s`
+            : analyze.isPending
+              ? 'Cimit lagi dengerin...'
+              : 'Ceritain makanan lo'}
+        </Text>
+        <Text style={{ marginTop: 4, fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub, textAlign: 'center' }}>
+          {rec.isRecording
+            ? 'Tap berhenti kalau udah selesai'
+            : analyze.isPending
+              ? 'Proses biasanya 5–10 detik'
+              : '"Tadi gue makan nasi padang sama rendang"'}
+        </Text>
+      </View>
 
       <Pressable
         onPress={rec.isRecording ? stop : start}
         disabled={rec.preparing || analyze.isPending}
-        style={({ pressed }) => ({
-          marginTop: 24,
-          width: 72,
-          height: 72,
-          borderRadius: 36,
-          backgroundColor: rec.isRecording ? '#ef4444' : '#818cf8',
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: pressed || rec.preparing || analyze.isPending ? 0.75 : 1,
-          shadowColor: rec.isRecording ? '#ef4444' : '#818cf8',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: isActive ? 0.45 : 0.2,
-          shadowRadius: 16,
-          elevation: 8,
-        })}
       >
-        {analyze.isPending ? (
-          <ActivityIndicator color="#fff" />
-        ) : rec.isRecording ? (
-          <Square size={28} color="#fff" fill="#fff" />
-        ) : (
-          <Mic size={32} color="#fff" />
-        )}
+        <Animated.View
+          style={[
+            {
+              width: 68,
+              height: 68,
+              borderRadius: 34,
+              backgroundColor: rec.isRecording ? '#ef4444' : '#818cf8',
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: rec.isRecording ? '#ef4444' : '#818cf8',
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.4,
+              shadowRadius: 14,
+              elevation: 8,
+              opacity: rec.preparing || analyze.isPending ? 0.6 : 1,
+            },
+            btnStyle,
+          ]}
+        >
+          {analyze.isPending ? (
+            <ActivityIndicator color="#fff" />
+          ) : rec.isRecording ? (
+            <Square size={26} color="#fff" fill="#fff" />
+          ) : (
+            <Mic size={30} color="#fff" />
+          )}
+        </Animated.View>
       </Pressable>
     </View>
   )
@@ -589,17 +521,24 @@ function ManualContent({ mealType }: { mealType: MealType }) {
     }
   }
 
+  const inputStyle = {
+    borderRadius: 14,
+    backgroundColor: c.cardAlt,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontFamily: 'Outfit_400Regular' as const,
+    fontSize: 15,
+    color: c.text,
+  }
+
   return (
-    <View style={{ borderRadius: 28, backgroundColor: c.card, padding: 20, gap: 12 }}>
-      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 13, letterSpacing: 0.5, textTransform: 'uppercase', color: c.textSub }}>
-        Input manual
-      </Text>
+    <View style={{ borderRadius: 28, backgroundColor: c.card, padding: 20, gap: 10 }}>
       <TextInput
         value={name}
         onChangeText={setName}
         placeholder="Nama makanan"
         placeholderTextColor={c.textSub}
-        style={{ borderRadius: 14, backgroundColor: c.cardAlt, paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 15, color: c.text }}
+        style={inputStyle}
       />
       <TextInput
         value={calories}
@@ -607,17 +546,17 @@ function ManualContent({ mealType }: { mealType: MealType }) {
         placeholder="Kalori (kkal)"
         placeholderTextColor={c.textSub}
         keyboardType="number-pad"
-        style={{ borderRadius: 14, backgroundColor: c.cardAlt, paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 15, color: c.text }}
+        style={inputStyle}
       />
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {[
-          { label: 'Protein', val: protein, set: setProtein },
-          { label: 'Karbo', val: carb, set: setCarb },
-          { label: 'Lemak', val: fat, set: setFat },
+          { label: 'Protein g', val: protein, set: setProtein },
+          { label: 'Karbo g', val: carb, set: setCarb },
+          { label: 'Lemak g', val: fat, set: setFat },
         ].map((f) => (
           <View key={f.label} style={{ flex: 1 }}>
             <Text style={{ marginBottom: 4, fontFamily: 'Outfit_700Bold', fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase', color: c.textSub, textAlign: 'center' }}>
-              {f.label} g
+              {f.label}
             </Text>
             <TextInput
               value={f.val}
@@ -625,7 +564,7 @@ function ManualContent({ mealType }: { mealType: MealType }) {
               placeholder="0"
               placeholderTextColor={c.textSub}
               keyboardType="decimal-pad"
-              style={{ borderRadius: 14, backgroundColor: c.cardAlt, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 15, color: c.text, textAlign: 'center' }}
+              style={{ ...inputStyle, textAlign: 'center', paddingHorizontal: 8 }}
             />
           </View>
         ))}
@@ -636,12 +575,12 @@ function ManualContent({ mealType }: { mealType: MealType }) {
         style={({ pressed }) => ({
           borderRadius: 99,
           backgroundColor: c.orange,
-          paddingVertical: 14,
+          paddingVertical: 13,
           alignItems: 'center',
           opacity: pressed || create.isPending ? 0.7 : 1,
         })}
       >
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: '#ffffff' }}>
+        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#ffffff' }}>
           {create.isPending ? 'Nyimpen...' : 'Catat sekarang'}
         </Text>
       </Pressable>
@@ -673,7 +612,7 @@ function ResultView({
     if (!edit) return
     try {
       const input: CreateFoodLogInput = {
-        source: mode === 'foto' ? 'vision' : mode === 'suara' ? 'audio' : 'manual' as FoodLogSource,
+        source: mode === 'foto' ? 'vision' : mode === 'suara' ? 'audio' : ('manual' as FoodLogSource),
         mealType,
         foodName: edit.food_name,
         estimatedWeightG: result.estimated_weight_g || undefined,
@@ -694,7 +633,7 @@ function ResultView({
   }
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, paddingTop: 4 }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, paddingTop: 4 }} showsVerticalScrollIndicator={false}>
       <AnalysisResultCard
         analysis={result}
         edit={edit!}
