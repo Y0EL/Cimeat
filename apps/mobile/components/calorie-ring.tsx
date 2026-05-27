@@ -3,7 +3,9 @@ import { Text, View } from 'react-native'
 import Animated, {
   Easing,
   useAnimatedProps,
+  useAnimatedStyle,
   useSharedValue,
+  withRepeat,
   withTiming,
 } from 'react-native-reanimated'
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg'
@@ -16,9 +18,18 @@ type Props = {
   goal: number
   size?: number
   strokeWidth?: number
+  analyzing?: boolean
+  displayNumber?: number
 }
 
-export function CalorieRing({ consumed, goal, size = 220, strokeWidth = 18 }: Props) {
+export function CalorieRing({
+  consumed,
+  goal,
+  size = 220,
+  strokeWidth = 18,
+  analyzing = false,
+  displayNumber,
+}: Props) {
   const c = useThemeColors()
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
@@ -28,13 +39,27 @@ export function CalorieRing({ consumed, goal, size = 220, strokeWidth = 18 }: Pr
   const remaining = Math.round(goal - consumed)
 
   const progress = useSharedValue(0)
+  const baseOpacity = useSharedValue(1)
+  const spin = useSharedValue(0)
+
   useEffect(() => {
     progress.value = withTiming(ratio, { duration: 900, easing: Easing.out(Easing.cubic) })
   }, [ratio, progress])
 
+  useEffect(() => {
+    baseOpacity.value = withTiming(analyzing ? 0 : 1, { duration: 300 })
+    if (analyzing) {
+      spin.value = 0
+      spin.value = withRepeat(withTiming(360, { duration: 1000, easing: Easing.linear }), -1, false)
+    }
+  }, [analyzing, baseOpacity, spin])
+
   const animatedProps = useAnimatedProps(() => ({
     strokeDashoffset: circumference * (1 - progress.value),
+    opacity: baseOpacity.value,
   }))
+
+  const spinStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.value}deg` }] }))
 
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
@@ -67,16 +92,43 @@ export function CalorieRing({ consumed, goal, size = 220, strokeWidth = 18 }: Pr
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
+
+      {analyzing ? (
+        <Animated.View style={[{ position: 'absolute', width: size, height: size }, spinStyle]}>
+          <Svg width={size} height={size}>
+            <Circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              stroke="#FF6B35"
+              strokeWidth={6}
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={circumference * 0.13}
+              fill="none"
+            />
+          </Svg>
+        </Animated.View>
+      ) : null}
+
       <View style={{ alignItems: 'center' }}>
-        <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 48, color: c.text, fontVariant: ['tabular-nums'] }}>
-          {Math.abs(remaining).toLocaleString('id-ID')}
-        </Text>
+        {analyzing ? (
+          <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 48, color: c.orange, fontVariant: ['tabular-nums'] }}>
+            {(displayNumber ?? 0).toLocaleString('id-ID')}
+          </Text>
+        ) : (
+          <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 48, color: c.text, fontVariant: ['tabular-nums'] }}>
+            {Math.abs(remaining).toLocaleString('id-ID')}
+          </Text>
+        )}
         <Text style={{ marginTop: 4, fontFamily: 'Outfit_700Bold', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: c.textSub }}>
-          {over ? 'kkal lebih' : 'kkal tersisa'}
+          {analyzing ? 'menganalisa' : over ? 'kkal lebih' : 'kkal tersisa'}
         </Text>
-        <Text style={{ marginTop: 8, fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>
-          {Math.round(consumed).toLocaleString('id-ID')} / {Math.round(goal).toLocaleString('id-ID')}
-        </Text>
+        {analyzing ? null : (
+          <Text style={{ marginTop: 8, fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>
+            {Math.round(consumed).toLocaleString('id-ID')} / {Math.round(goal).toLocaleString('id-ID')}
+          </Text>
+        )}
       </View>
     </View>
   )
