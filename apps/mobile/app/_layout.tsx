@@ -91,6 +91,10 @@ function AuthGate() {
       <Stack.Screen name="goals" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="foods" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen
+        name="log"
+        options={{ presentation: 'transparentModal', animation: 'fade' }}
+      />
+      <Stack.Screen
         name="paywall"
         options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
       />

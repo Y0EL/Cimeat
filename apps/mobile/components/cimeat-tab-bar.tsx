@@ -16,24 +16,16 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useRouter } from 'expo-router'
 import { useThemeColors } from '~/lib/theme'
 
-type TabKey = 'index' | 'recipe' | 'log' | 'nearby' | 'progress'
+type TabKey = 'index' | 'recipe' | 'nearby' | 'progress'
 
 const tabs: Record<TabKey, { icon: LucideIcon; label: string }> = {
   index: { icon: House, label: 'Beranda' },
   recipe: { icon: ChefHat, label: 'Resep' },
-  log: { icon: Plus, label: 'Catat' },
   nearby: { icon: MapPin, label: 'Sekitar' },
   progress: { icon: TrendingUp, label: 'Progres' },
-}
-
-const barShadow = {
-  shadowColor: '#1A1C1E',
-  shadowOffset: { width: 0, height: 8 },
-  shadowOpacity: 0.12,
-  shadowRadius: 32,
-  elevation: 16,
 }
 
 const fabShadow = {
@@ -129,6 +121,7 @@ function TabButton({
 
 export function CimeatTabBar({ state, navigation }: BottomTabBarProps) {
   const c = useThemeColors()
+  const router = useRouter()
   const insets = useSafeAreaInsets()
   const slideY = useSharedValue(80)
   const opacity = useSharedValue(0)
@@ -142,6 +135,38 @@ export function CimeatTabBar({ state, navigation }: BottomTabBarProps) {
     transform: [{ translateY: slideY.value }],
     opacity: opacity.value,
   }))
+
+  const validRoutes = state.routes.filter((r) => r.name !== 'log')
+
+  const makeTab = (route: (typeof state.routes)[number], index: number) => {
+    const key = route.name as TabKey
+    const config = tabs[key]
+    if (!config) return null
+    const originalIndex = state.routes.indexOf(route)
+    const isFocused = state.index === originalIndex
+
+    const onPress = () => {
+      const event = navigation.emit({
+        type: 'tabPress',
+        target: route.key,
+        canPreventDefault: true,
+      })
+      if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name)
+    }
+
+    return (
+      <TabButton
+        key={route.key}
+        icon={config.icon}
+        label={config.label}
+        isFocused={isFocused}
+        onPress={onPress}
+      />
+    )
+  }
+
+  const leftTabs = validRoutes.slice(0, 2)
+  const rightTabs = validRoutes.slice(2)
 
   return (
     <View
@@ -176,35 +201,9 @@ export function CimeatTabBar({ state, navigation }: BottomTabBarProps) {
           containerStyle,
         ]}
       >
-        {state.routes.map((route, index) => {
-          const key = route.name as TabKey
-          const config = tabs[key]
-          if (!config) return null
-          const isFocused = state.index === index
-
-          const navigate = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            })
-            if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name)
-          }
-
-          if (key === 'log') {
-            return <FabButton key={route.key} onPress={navigate} />
-          }
-
-          return (
-            <TabButton
-              key={route.key}
-              icon={config.icon}
-              label={config.label}
-              isFocused={isFocused}
-              onPress={navigate}
-            />
-          )
-        })}
+        {leftTabs.map((r, i) => makeTab(r, i))}
+        <FabButton onPress={() => router.push('/log')} />
+        {rightTabs.map((r, i) => makeTab(r, i + 2))}
       </Animated.View>
     </View>
   )
