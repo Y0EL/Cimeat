@@ -136,14 +136,11 @@ export function CimeatTabBar({ state, navigation }: BottomTabBarProps) {
     opacity: opacity.value,
   }))
 
-  const validRoutes = state.routes.filter((r) => r.name !== 'log')
-
-  const makeTab = (route: (typeof state.routes)[number], index: number) => {
+  const makeTab = (route: (typeof state.routes)[number], routeIndex: number) => {
     const key = route.name as TabKey
     const config = tabs[key]
     if (!config) return null
-    const originalIndex = state.routes.indexOf(route)
-    const isFocused = state.index === originalIndex
+    const isFocused = state.index === routeIndex
 
     const onPress = () => {
       const event = navigation.emit({
@@ -165,8 +162,8 @@ export function CimeatTabBar({ state, navigation }: BottomTabBarProps) {
     )
   }
 
-  const leftTabs = validRoutes.slice(0, 2)
-  const rightTabs = validRoutes.slice(2)
+  const leftTabs = state.routes.slice(0, 2)
+  const rightTabs = state.routes.slice(2)
 
   return (
     <View
