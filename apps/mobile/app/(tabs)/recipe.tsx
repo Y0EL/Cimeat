@@ -329,7 +329,7 @@ function RecipeResult({ recipe, onLog }: { recipe: RecipeResponse; onLog: () => 
         <Pill label={`${n.servings} porsi`} />
       </View>
 
-      <MarkdownText text={recipe.recipe_markdown} className="mt-3" />
+      <MarkdownText text={recipe.recipe_markdown} style={{ marginTop: 12 }} />
 
       {recipe.cimit_message ? (
         <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 20, backgroundColor: '#2A2D30', paddingHorizontal: 14, paddingVertical: 12 }}>

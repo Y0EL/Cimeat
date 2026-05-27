@@ -1,11 +1,12 @@
-import { Text, View } from 'react-native'
+import { Text, View, type ViewStyle } from 'react-native'
+import { useThemeColors } from '~/lib/theme'
 
-function renderInline(line: string, keyPrefix: string) {
+function renderInline(line: string, keyPrefix: string, color: string) {
   const parts = line.split(/(\*\*[^*]+\*\*)/g)
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
-        <Text key={`${keyPrefix}-b-${i}`} className="font-sans font-bold text-zinc-900 dark:text-zinc-100">
+        <Text key={`${keyPrefix}-b-${i}`} style={{ fontFamily: 'Outfit_700Bold', color }}>
           {part.slice(2, -2)}
         </Text>
       )
@@ -14,31 +15,32 @@ function renderInline(line: string, keyPrefix: string) {
   })
 }
 
-export function MarkdownText({ text, className }: { text: string; className?: string }) {
+export function MarkdownText({ text, style }: { text: string; style?: ViewStyle }) {
+  const c = useThemeColors()
   const lines = text.split('\n')
   return (
-    <View className={className}>
+    <View style={style}>
       {lines.map((raw, i) => {
         const line = raw.trimEnd()
         if (!line.trim()) return <View key={i} style={{ height: 6 }} />
 
         if (line.startsWith('### ')) {
           return (
-            <Text key={i} className="mb-1 mt-2 font-display text-sm font-bold text-zinc-900 dark:text-zinc-100">
+            <Text key={i} style={{ marginTop: 8, marginBottom: 4, fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.text }}>
               {line.slice(4)}
             </Text>
           )
         }
         if (line.startsWith('## ')) {
           return (
-            <Text key={i} className="mb-1 mt-2 font-display text-base font-bold text-zinc-900 dark:text-zinc-100">
+            <Text key={i} style={{ marginTop: 8, marginBottom: 4, fontFamily: 'Outfit_700Bold', fontSize: 16, color: c.text }}>
               {line.slice(3)}
             </Text>
           )
         }
         if (line.startsWith('# ')) {
           return (
-            <Text key={i} className="mb-1 mt-2 font-display text-lg font-extrabold text-zinc-900 dark:text-zinc-100">
+            <Text key={i} style={{ marginTop: 8, marginBottom: 4, fontFamily: 'Outfit_900Black', fontSize: 18, color: c.text }}>
               {line.slice(2)}
             </Text>
           )
@@ -47,10 +49,10 @@ export function MarkdownText({ text, className }: { text: string; className?: st
         const bullet = line.match(/^[-*]\s+(.*)$/)
         if (bullet) {
           return (
-            <View key={i} className="mb-0.5 flex-row gap-2">
-              <Text className="font-sans text-sm text-primary-500">•</Text>
-              <Text className="flex-1 font-sans text-sm leading-5 text-zinc-700 dark:text-zinc-200">
-                {renderInline(bullet[1] ?? '', String(i))}
+            <View key={i} style={{ marginBottom: 2, flexDirection: 'row', gap: 8 }}>
+              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.orange }}>•</Text>
+              <Text style={{ flex: 1, fontFamily: 'Outfit_400Regular', fontSize: 14, lineHeight: 20, color: c.textSub }}>
+                {renderInline(bullet[1] ?? '', String(i), c.text)}
               </Text>
             </View>
           )
@@ -59,18 +61,18 @@ export function MarkdownText({ text, className }: { text: string; className?: st
         const numbered = line.match(/^(\d+)\.\s+(.*)$/)
         if (numbered) {
           return (
-            <View key={i} className="mb-0.5 flex-row gap-2">
-              <Text className="font-sans text-sm font-semibold text-primary-500">{numbered[1]}.</Text>
-              <Text className="flex-1 font-sans text-sm leading-5 text-zinc-700 dark:text-zinc-200">
-                {renderInline(numbered[2] ?? '', String(i))}
+            <View key={i} style={{ marginBottom: 2, flexDirection: 'row', gap: 8 }}>
+              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.orange }}>{numbered[1]}.</Text>
+              <Text style={{ flex: 1, fontFamily: 'Outfit_400Regular', fontSize: 14, lineHeight: 20, color: c.textSub }}>
+                {renderInline(numbered[2] ?? '', String(i), c.text)}
               </Text>
             </View>
           )
         }
 
         return (
-          <Text key={i} className="mb-0.5 font-sans text-sm leading-5 text-zinc-700 dark:text-zinc-200">
-            {renderInline(line, String(i))}
+          <Text key={i} style={{ marginBottom: 2, fontFamily: 'Outfit_400Regular', fontSize: 14, lineHeight: 20, color: c.textSub }}>
+            {renderInline(line, String(i), c.text)}
           </Text>
         )
       })}

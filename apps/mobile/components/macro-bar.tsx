@@ -1,4 +1,11 @@
+import { useEffect } from 'react'
 import { Text, View } from 'react-native'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
 import { MACRO_COLORS } from '~/lib/categories'
 import { useThemeColors } from '~/lib/theme'
 
@@ -14,6 +21,13 @@ export function MacroBar({ macro, value, goal }: { macro: MacroKey; value: numbe
   const c = useThemeColors()
   const color = MACRO_COLORS[macro]
   const pct = goal > 0 ? Math.min((value / goal) * 100, 100) : 0
+  const fill = useSharedValue(0)
+
+  useEffect(() => {
+    fill.value = withTiming(pct, { duration: 1000, easing: Easing.out(Easing.cubic) })
+  }, [pct, fill])
+
+  const fillStyle = useAnimatedStyle(() => ({ width: `${fill.value}%` }))
 
   return (
     <View style={{ flex: 1 }}>
@@ -26,7 +40,7 @@ export function MacroBar({ macro, value, goal }: { macro: MacroKey; value: numbe
         </Text>
       </View>
       <View style={{ marginTop: 6, height: 6, overflow: 'hidden', borderRadius: 3, backgroundColor: c.border }}>
-        <View style={{ width: `${pct}%` as `${number}%`, height: '100%', backgroundColor: color, borderRadius: 3 }} />
+        <Animated.View style={[{ height: '100%', backgroundColor: color, borderRadius: 3 }, fillStyle]} />
       </View>
     </View>
   )

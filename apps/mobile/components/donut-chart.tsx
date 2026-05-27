@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
+import { useThemeColors } from '~/lib/theme'
 
 const SIZE = 160
 const CX = SIZE / 2
@@ -46,12 +47,13 @@ export function DonutChart({
   centerLabel?: string
   centerValue?: string
 }) {
+  const c = useThemeColors()
   const nonZero = slices.filter((s) => s.total > 0)
 
   if (nonZero.length === 0) {
     return (
       <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center' }}>
-        <Text className="font-sans text-xs text-zinc-400">Belum ada data</Text>
+        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>Belum ada data</Text>
       </View>
     )
   }
@@ -75,12 +77,12 @@ export function DonutChart({
       </Svg>
       <View style={{ alignItems: 'center' }}>
         {centerLabel ? (
-          <Text className="font-sans text-[10px] uppercase tracking-widest text-zinc-400">
+          <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: c.textSub }}>
             {centerLabel}
           </Text>
         ) : null}
         {centerValue ? (
-          <Text className="font-display text-base font-bold text-zinc-900 dark:text-zinc-100">
+          <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: c.text }}>
             {centerValue}
           </Text>
         ) : null}

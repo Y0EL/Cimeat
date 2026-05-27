@@ -1,6 +1,13 @@
 import { Volume2, VolumeX } from 'lucide-react-native'
-import { useState } from 'react'
-import { ActivityIndicator, Pressable } from 'react-native'
+import { useEffect, useState } from 'react'
+import { Pressable } from 'react-native'
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated'
 import type { CimitTone } from '@cimeat/types'
 import { useCimitTts } from '~/hooks/use-cimit'
 import { playRemoteAudio, stopRemoteAudio } from '~/lib/audio'
@@ -14,9 +21,24 @@ type Props = {
   color?: string
 }
 
-export function TtsButton({ text, tone, size = 18, color = '#ea580c' }: Props) {
+export function TtsButton({ text, tone, size = 18, color = '#FF6B35' }: Props) {
   const tts = useCimitTts()
   const [playing, setPlaying] = useState(false)
+  const pulse = useSharedValue(1)
+
+  useEffect(() => {
+    if (tts.isPending) {
+      pulse.value = withRepeat(
+        withSequence(withTiming(0.4, { duration: 500 }), withTiming(1, { duration: 500 })),
+        -1,
+        false,
+      )
+    } else {
+      pulse.value = withTiming(1, { duration: 200 })
+    }
+  }, [tts.isPending, pulse])
+
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }))
 
   async function onPress() {
     if (playing) {
@@ -41,15 +63,19 @@ export function TtsButton({ text, tone, size = 18, color = '#ea580c' }: Props) {
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={playing ? 'Stop suara Cimit' : 'Dengerin Cimit'}
-      className="h-8 w-8 items-center justify-center rounded-full bg-primary-100 active:opacity-70 dark:bg-primary-950"
+      style={({ pressed }) => ({
+        width: 32,
+        height: 32,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,107,53,0.15)',
+        opacity: pressed ? 0.7 : 1,
+      })}
     >
-      {tts.isPending ? (
-        <ActivityIndicator size="small" color={color} />
-      ) : playing ? (
-        <VolumeX size={size} color={color} />
-      ) : (
-        <Volume2 size={size} color={color} />
-      )}
+      <Animated.View style={pulseStyle}>
+        {playing ? <VolumeX size={size} color={color} /> : <Volume2 size={size} color={color} />}
+      </Animated.View>
     </Pressable>
   )
 }
