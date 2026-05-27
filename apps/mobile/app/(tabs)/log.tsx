@@ -1,20 +1,17 @@
-import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
+import { useNavigation } from 'expo-router'
 import {
   Camera,
   Check,
-  ImageIcon,
   Mic,
   Square,
-  Type as TypeIcon,
+  X,
 } from 'lucide-react-native'
 import { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
   Image,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -31,52 +28,62 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { CreateFoodLogInput, FoodAnalysis, FoodLogSource, MealType } from '@cimeat/types'
-import {
-  AnalysisResultCard,
-  type EditableAnalysis,
-} from '~/components/analysis-result-card'
-import { QuotaBadge } from '~/components/quota-badge'
-import { ScreenFade } from '~/components/screen-fade'
 import { useAudioRecording } from '~/hooks/use-audio-log'
 import { useCreateFoodLog } from '~/hooks/use-food-logs'
-import {
-  useAnalyzeAudio,
-  useAnalyzeImage,
-  useAnalyzeText,
-} from '~/hooks/use-food-ai'
+import { useAnalyzeAudio, useAnalyzeImage } from '~/hooks/use-food-ai'
 import { useSubscription } from '~/hooks/use-subscription'
 import { apiErrorMessage, isQuotaExceeded } from '~/lib/api'
 import { track } from '~/lib/analytics'
 import { useThemeColors } from '~/lib/theme'
 
-type Mode = 'foto' | 'suara' | 'manual'
+type Phase = 'choice' | 'voice' | 'foto-analyzing' | 'voice-analyzing' | 'draft'
 
-const MEAL_TYPES: { key: MealType; label: string }[] = [
+type DraftItem = {
+  foodName: string
+  calories: number
+  proteinG: number
+  carbsG: number
+  fatG: number
+  healthScore: number
+  estimatedWeightG: number
+  mealType: MealType
+  previewUri: string | null
+  transcript: string | null
+  source: FoodLogSource
+  rawAnalysis: FoodAnalysis
+}
+
+const MEAL_CATS: { key: MealType; label: string }[] = [
   { key: 'breakfast', label: 'Sarapan' },
-  { key: 'lunch', label: 'Siang' },
-  { key: 'dinner', label: 'Malam' },
-  { key: 'snack', label: 'Camilan' },
+  { key: 'lunch', label: 'Makan Siang' },
+  { key: 'dinner', label: 'Makan Malam' },
+  { key: 'snack', label: 'Cemilan' },
 ]
 
-const WAVE_HEIGHTS = [18, 32, 44, 28, 52, 36, 48, 24, 56, 40, 60, 32, 48, 22, 44, 30, 52, 20, 38, 28]
+const ANALYZE_STEPS = [
+  'Mendeteksi jenis makanan...',
+  'Menghitung kalori...',
+  'Menganalisis nutrisi makro...',
+  'Hampir selesai...',
+]
 
-function nowIso(): string {
+const WAVE_HEIGHTS = [18, 30, 44, 28, 52, 36, 48, 24, 56, 40, 60, 32, 48, 22, 44, 30, 52, 20, 38, 28, 44, 26, 36, 18, 32]
+
+function nowIso() {
   return new Date().toISOString()
 }
 
-function toEditable(a: FoodAnalysis): EditableAnalysis {
-  return {
-    food_name: a.food_name,
-    calories: a.calories,
-    protein_g: a.macronutrients.protein_g,
-    carbs_g: a.macronutrients.carbs_g,
-    fat_g: a.macronutrients.fat_g,
-  }
+function defaultMealType(): MealType {
+  const h = new Date().getHours()
+  if (h < 10) return 'breakfast'
+  if (h < 15) return 'lunch'
+  if (h < 20) return 'dinner'
+  return 'snack'
 }
 
-function WaveBar({ active, delay, maxH }: { active: boolean; delay: number; maxH: number }) {
+function WaveBar({ active, delay, maxH, color }: { active: boolean; delay: number; maxH: number; color: string }) {
   const h = useSharedValue(4)
 
   useEffect(() => {
@@ -85,8 +92,8 @@ function WaveBar({ active, delay, maxH }: { active: boolean; delay: number; maxH
         delay,
         withRepeat(
           withSequence(
-            withTiming(maxH, { duration: 200 + delay * 0.3 }),
-            withTiming(4, { duration: 200 + delay * 0.3 }),
+            withTiming(maxH, { duration: 300 + delay * 0.4 }),
+            withTiming(4, { duration: 300 + delay * 0.4 }),
           ),
           -1,
           false,
@@ -99,607 +106,637 @@ function WaveBar({ active, delay, maxH }: { active: boolean; delay: number; maxH
   }, [active, h, delay, maxH])
 
   const style = useAnimatedStyle(() => ({ height: h.value }))
-  return <Animated.View style={[{ width: 3, borderRadius: 2, backgroundColor: '#818cf8' }, style]} />
+  return <Animated.View style={[{ width: 2, borderRadius: 2, backgroundColor: color }, style]} />
 }
 
-function Waveform({ active, analyzing }: { active: boolean; analyzing: boolean }) {
-  const pulseH = useSharedValue(4)
-
-  useEffect(() => {
-    if (analyzing) {
-      pulseH.value = withRepeat(
-        withSequence(withTiming(36, { duration: 500 }), withTiming(8, { duration: 500 })),
-        -1,
-        false,
-      )
-    } else {
-      cancelAnimation(pulseH)
-      pulseH.value = withTiming(4, { duration: 200 })
-    }
-  }, [analyzing, pulseH])
-
+function Waveform({ active, color }: { active: boolean; color: string }) {
   return (
-    <View style={{ flexDirection: 'row', gap: 3, alignItems: 'flex-end', height: 64, justifyContent: 'center', paddingHorizontal: 8 }}>
+    <View style={{ flexDirection: 'row', gap: 3, alignItems: 'flex-end', height: 64, justifyContent: 'center', paddingHorizontal: 12 }}>
       {WAVE_HEIGHTS.map((maxH, i) => (
-        <WaveBar key={i} active={active && !analyzing} delay={i * 35} maxH={maxH} />
+        <WaveBar key={i} active={active} delay={i * 40} maxH={maxH} color={color} />
       ))}
     </View>
   )
 }
 
-function ModeTab({
-  icon: Icon,
-  label,
-  active,
-  color,
-  onPress,
-}: {
-  icon: typeof Camera
-  label: string
-  active: boolean
-  color: string
-  onPress: () => void
-}) {
-  const c = useThemeColors()
-  const iconScale = useSharedValue(1)
-
-  useEffect(() => {
-    if (active) {
-      iconScale.value = withSequence(
-        withSpring(1.5, { damping: 5, stiffness: 500 }),
-        withSpring(1, { damping: 12 }),
-      )
-    }
-  }, [active, iconScale])
-
-  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: iconScale.value }] }))
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        paddingVertical: 12,
-        borderRadius: 18,
-        backgroundColor: active ? color : 'transparent',
-        opacity: pressed ? 0.85 : 1,
-      })}
-    >
-      <Animated.View style={animStyle}>
-        <Icon size={18} color={active ? '#ffffff' : c.textSub} />
-      </Animated.View>
-      <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 14, color: active ? '#ffffff' : c.textSub }}>
-        {label}
-      </Text>
-    </Pressable>
-  )
-}
-
 export default function LogTab() {
   const c = useThemeColors()
-  const params = useLocalSearchParams<{ tab?: string; mealType?: string }>()
-  const initialMeal = (MEAL_TYPES.find((m) => m.key === params.mealType)?.key ?? 'lunch') as MealType
-  const initialMode: Mode = params.tab === 'suara' ? 'suara' : params.tab === 'manual' ? 'manual' : 'foto'
-
-  const [mode, setMode] = useState<Mode>(initialMode)
-  const [mealType, setMealType] = useState<MealType>(initialMeal)
-  const [result, setResult] = useState<FoodAnalysis | null>(null)
-  const [edit, setEdit] = useState<EditableAnalysis | null>(null)
-
-  function reset() {
-    setResult(null)
-    setEdit(null)
-  }
-
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top']}>
-      <ScreenFade>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
-          <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 24, color: c.text }}>
-            Catat makanan
-          </Text>
-          {mode === 'foto' ? (
-            <QuotaBadge feature="vision" />
-          ) : mode === 'suara' ? (
-            <QuotaBadge feature="audio" />
-          ) : null}
-        </View>
-
-        <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}>
-          {MEAL_TYPES.map((m) => {
-            const active = mealType === m.key
-            return (
-              <Pressable
-                key={m.key}
-                onPress={() => setMealType(m.key)}
-                style={({ pressed }) => ({
-                  borderRadius: 99,
-                  backgroundColor: active ? c.orangeSoft : c.card,
-                  paddingHorizontal: 14,
-                  paddingVertical: 7,
-                  borderWidth: 1.5,
-                  borderColor: active ? c.orange : c.border,
-                  opacity: pressed ? 0.75 : 1,
-                })}
-              >
-                <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 13, color: active ? c.orange : c.textSub }}>
-                  {m.label}
-                </Text>
-              </Pressable>
-            )
-          })}
-        </View>
-
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          {result ? (
-            <ResultView
-              result={result}
-              edit={edit}
-              mode={mode}
-              mealType={mealType}
-              onEditChange={(patch) => setEdit((e) => (e ? { ...e, ...patch } : e))}
-              onReset={reset}
-            />
-          ) : (
-            <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              <View style={{ borderRadius: 28, backgroundColor: c.card, overflow: 'hidden', shadowColor: c.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 4 }}>
-                <View style={{ flexDirection: 'row', gap: 4, padding: 6, backgroundColor: c.cardAlt }}>
-                  <ModeTab icon={Camera} label="Foto" active={mode === 'foto'} color="#FF6B35" onPress={() => setMode('foto')} />
-                  <ModeTab icon={Mic} label="Suara" active={mode === 'suara'} color="#818cf8" onPress={() => setMode('suara')} />
-                </View>
-
-                <View style={{ padding: 20 }}>
-                  {mode === 'foto' ? (
-                    <FotoContent mealType={mealType} onResult={(r) => { setResult(r); setEdit(toEditable(r)) }} />
-                  ) : mode === 'suara' ? (
-                    <SuaraContent mealType={mealType} onResult={(r) => { setResult(r); setEdit(toEditable(r)) }} />
-                  ) : null}
-                </View>
-              </View>
-
-              <Pressable
-                onPress={() => setMode('manual')}
-                style={({ pressed }) => ({ marginTop: 16, alignItems: 'center', paddingVertical: 14, borderRadius: 20, backgroundColor: c.card, opacity: pressed ? 0.6 : 1 })}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <TypeIcon size={15} color={c.textSub} />
-                  <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: c.textSub }}>Input manual</Text>
-                </View>
-              </Pressable>
-
-              {mode === 'manual' ? (
-                <View style={{ marginTop: 12 }}>
-                  <ManualContent mealType={mealType} />
-                </View>
-              ) : null}
-            </ScrollView>
-          )}
-        </KeyboardAvoidingView>
-      </ScreenFade>
-    </SafeAreaView>
-  )
-}
-
-function FotoContent({
-  mealType,
-  onResult,
-}: {
-  mealType: MealType
-  onResult: (r: FoodAnalysis) => void
-}) {
-  const c = useThemeColors()
-  const analyze = useAnalyzeImage()
-  const { handleError } = useSaveFlow()
-  const [preview, setPreview] = useState<string | null>(null)
-
-  async function pick(from: 'camera' | 'gallery') {
-    try {
-      const perm =
-        from === 'camera'
-          ? await ImagePicker.requestCameraPermissionsAsync()
-          : await ImagePicker.requestMediaLibraryPermissionsAsync()
-      if (!perm.granted) {
-        Alert.alert('Izin dibutuhkan', 'Cimeat butuh akses kamera/galeri buat foto makanan.')
-        return
-      }
-      const res =
-        from === 'camera'
-          ? await ImagePicker.launchCameraAsync({ base64: true, quality: 0.6 })
-          : await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.6 })
-      const asset = res.assets?.[0]
-      if (res.canceled || !asset?.base64) return
-      setPreview(asset.uri)
-      track('log_food_photo')
-      const r = await analyze.mutateAsync({
-        image: asset.base64,
-        mimeType: asset.mimeType ?? 'image/jpeg',
-        mealType,
-      })
-      onResult(r)
-    } catch (err) {
-      handleError(err)
-    }
-  }
-
-  if (analyze.isPending && preview) {
-    return (
-      <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-        <Image source={{ uri: preview }} style={{ width: '100%', height: 140, borderRadius: 16, marginBottom: 16 }} resizeMode="cover" />
-        <ActivityIndicator size="large" color={c.orange} />
-        <Text style={{ marginTop: 10, fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub }}>
-          Cimit lagi nganalisa...
-        </Text>
-      </View>
-    )
-  }
-
-  return (
-    <View style={{ gap: 10 }}>
-      <View style={{ alignItems: 'center', paddingBottom: 8 }}>
-        <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFF3EE', alignItems: 'center', justifyContent: 'center' }}>
-          <Camera size={26} color="#FF6B35" />
-        </View>
-        <Text style={{ marginTop: 10, fontFamily: 'Outfit_700Bold', fontSize: 15, color: c.text }}>
-          Foto makanan lo
-        </Text>
-        <Text style={{ marginTop: 4, fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub, textAlign: 'center' }}>
-          Cimit deteksi & estimasi kalori otomatis
-        </Text>
-      </View>
-      <Pressable
-        onPress={() => pick('camera')}
-        style={({ pressed }) => ({
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 10,
-          borderRadius: 99,
-          backgroundColor: '#FF6B35',
-          paddingVertical: 13,
-          opacity: pressed ? 0.85 : 1,
-        })}
-      >
-        <Camera size={18} color="#ffffff" />
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#ffffff' }}>Buka kamera</Text>
-      </Pressable>
-      <Pressable
-        onPress={() => pick('gallery')}
-        style={({ pressed }) => ({
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 10,
-          borderRadius: 99,
-          backgroundColor: c.cardAlt,
-          borderWidth: 1,
-          borderColor: c.border,
-          paddingVertical: 13,
-          opacity: pressed ? 0.8 : 1,
-        })}
-      >
-        <ImageIcon size={18} color={c.orange} />
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.orange }}>Pilih dari galeri</Text>
-      </Pressable>
-    </View>
-  )
-}
-
-function SuaraContent({
-  mealType,
-  onResult,
-}: {
-  mealType: MealType
-  onResult: (r: FoodAnalysis) => void
-}) {
-  const c = useThemeColors()
-  const rec = useAudioRecording()
-  const analyze = useAnalyzeAudio()
-  const { handleError } = useSaveFlow()
-  const btnScale = useSharedValue(1)
-
-  const btnStyle = useAnimatedStyle(() => ({ transform: [{ scale: btnScale.value }] }))
-
-  async function start() {
-    try {
-      btnScale.value = withSequence(withSpring(0.88, { damping: 10 }), withSpring(1, { damping: 12 }))
-      await rec.start()
-    } catch {
-      Alert.alert('Izin mic', 'Cimeat butuh akses mikrofon buat catat pakai suara.')
-    }
-  }
-
-  async function stop() {
-    try {
-      btnScale.value = withSequence(withSpring(0.88, { damping: 10 }), withSpring(1, { damping: 12 }))
-      const clip = await rec.stop()
-      if (!clip) return
-      track('log_food_audio')
-      const r = await analyze.mutateAsync({ audio: clip.base64, mimeType: clip.mimeType })
-      onResult(r)
-    } catch (err) {
-      handleError(err)
-    }
-  }
-
-  return (
-    <View style={{ alignItems: 'center', paddingVertical: 8, gap: 16 }}>
-      <Waveform active={rec.isRecording} analyzing={analyze.isPending} />
-
-      <View style={{ alignItems: 'center' }}>
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: c.text }}>
-          {rec.isRecording
-            ? `Merekam · ${rec.durationSec}s`
-            : analyze.isPending
-              ? 'Cimit lagi dengerin...'
-              : 'Ceritain makanan lo'}
-        </Text>
-        <Text style={{ marginTop: 4, fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub, textAlign: 'center' }}>
-          {rec.isRecording
-            ? 'Tap berhenti kalau udah selesai'
-            : analyze.isPending
-              ? 'Proses biasanya 5–10 detik'
-              : '"Tadi gue makan nasi padang sama rendang"'}
-        </Text>
-      </View>
-
-      <Pressable
-        onPress={rec.isRecording ? stop : start}
-        disabled={rec.preparing || analyze.isPending}
-      >
-        <Animated.View
-          style={[
-            {
-              width: 68,
-              height: 68,
-              borderRadius: 34,
-              backgroundColor: rec.isRecording ? '#ef4444' : '#818cf8',
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: rec.isRecording ? '#ef4444' : '#818cf8',
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.4,
-              shadowRadius: 14,
-              elevation: 8,
-              opacity: rec.preparing || analyze.isPending ? 0.6 : 1,
-            },
-            btnStyle,
-          ]}
-        >
-          {analyze.isPending ? (
-            <ActivityIndicator color="#fff" />
-          ) : rec.isRecording ? (
-            <Square size={26} color="#fff" fill="#fff" />
-          ) : (
-            <Mic size={30} color="#fff" />
-          )}
-        </Animated.View>
-      </Pressable>
-    </View>
-  )
-}
-
-function ManualContent({ mealType }: { mealType: MealType }) {
-  const c = useThemeColors()
-  const create = useCreateFoodLog()
-  const { done, handleError } = useSaveFlow()
-  const [name, setName] = useState('')
-  const [calories, setCalories] = useState('')
-  const [protein, setProtein] = useState('')
-  const [carb, setCarb] = useState('')
-  const [fat, setFat] = useState('')
-
-  async function save() {
-    if (!name.trim()) {
-      Alert.alert('Nama kosong', 'Isi dulu nama makanannya ya.')
-      return
-    }
-    try {
-      track('log_food_manual')
-      const input: CreateFoodLogInput = {
-        source: 'manual' as FoodLogSource,
-        mealType,
-        foodName: name.trim(),
-        calories: Number(calories) || 0,
-        proteinG: Number(protein) || 0,
-        carbsG: Number(carb) || 0,
-        fatG: Number(fat) || 0,
-        eatenAt: nowIso(),
-      }
-      await create.mutateAsync(input)
-      done()
-    } catch (err) {
-      handleError(err)
-    }
-  }
-
-  const inputStyle = {
-    borderRadius: 14,
-    backgroundColor: c.cardAlt,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontFamily: 'Outfit_400Regular' as const,
-    fontSize: 15,
-    color: c.text,
-  }
-
-  return (
-    <View style={{ borderRadius: 28, backgroundColor: c.card, padding: 20, gap: 10 }}>
-      <TextInput
-        value={name}
-        onChangeText={setName}
-        placeholder="Nama makanan"
-        placeholderTextColor={c.textSub}
-        style={inputStyle}
-      />
-      <TextInput
-        value={calories}
-        onChangeText={setCalories}
-        placeholder="Kalori (kkal)"
-        placeholderTextColor={c.textSub}
-        keyboardType="number-pad"
-        style={inputStyle}
-      />
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        {[
-          { label: 'Protein g', val: protein, set: setProtein },
-          { label: 'Karbo g', val: carb, set: setCarb },
-          { label: 'Lemak g', val: fat, set: setFat },
-        ].map((f) => (
-          <View key={f.label} style={{ flex: 1 }}>
-            <Text style={{ marginBottom: 4, fontFamily: 'Outfit_700Bold', fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase', color: c.textSub, textAlign: 'center' }}>
-              {f.label}
-            </Text>
-            <TextInput
-              value={f.val}
-              onChangeText={f.set}
-              placeholder="0"
-              placeholderTextColor={c.textSub}
-              keyboardType="decimal-pad"
-              style={{ ...inputStyle, textAlign: 'center', paddingHorizontal: 8 }}
-            />
-          </View>
-        ))}
-      </View>
-      <Pressable
-        onPress={save}
-        disabled={create.isPending}
-        style={({ pressed }) => ({
-          borderRadius: 99,
-          backgroundColor: c.orange,
-          paddingVertical: 13,
-          alignItems: 'center',
-          opacity: pressed || create.isPending ? 0.7 : 1,
-        })}
-      >
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#ffffff' }}>
-          {create.isPending ? 'Nyimpen...' : 'Catat sekarang'}
-        </Text>
-      </Pressable>
-    </View>
-  )
-}
-
-function ResultView({
-  result,
-  edit,
-  mode,
-  mealType,
-  onEditChange,
-  onReset,
-}: {
-  result: FoodAnalysis
-  edit: EditableAnalysis | null
-  mode: Mode
-  mealType: MealType
-  onEditChange: (patch: Partial<EditableAnalysis>) => void
-  onReset: () => void
-}) {
-  const c = useThemeColors()
-  const create = useCreateFoodLog()
-  const { done, handleError } = useSaveFlow()
-  const transcript = (result as FoodAnalysis & { transcript?: string }).transcript ?? ''
-
-  async function save() {
-    if (!edit) return
-    try {
-      const input: CreateFoodLogInput = {
-        source: mode === 'foto' ? 'vision' : mode === 'suara' ? 'audio' : ('manual' as FoodLogSource),
-        mealType,
-        foodName: edit.food_name,
-        estimatedWeightG: result.estimated_weight_g || undefined,
-        calories: Math.round(edit.calories),
-        proteinG: edit.protein_g,
-        carbsG: edit.carbs_g,
-        fatG: edit.fat_g,
-        healthScore: result.health_score,
-        confidenceScore: result.confidence_score,
-        note: transcript || undefined,
-        eatenAt: nowIso(),
-      }
-      await create.mutateAsync(input)
-      done()
-    } catch (err) {
-      handleError(err)
-    }
-  }
-
-  return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, paddingTop: 4 }} showsVerticalScrollIndicator={false}>
-      <AnalysisResultCard
-        analysis={result}
-        edit={edit!}
-        transcript={transcript}
-        onChange={onEditChange}
-      />
-      <View style={{ marginTop: 12, flexDirection: 'row', gap: 10 }}>
-        <Pressable
-          onPress={onReset}
-          style={({ pressed }) => ({
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 99,
-            backgroundColor: c.cardAlt,
-            paddingVertical: 14,
-            opacity: pressed ? 0.7 : 1,
-          })}
-        >
-          <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.textSub }}>Ulangi</Text>
-        </Pressable>
-        <Pressable
-          onPress={save}
-          disabled={create.isPending}
-          style={({ pressed }) => ({
-            flex: 2,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            borderRadius: 99,
-            backgroundColor: c.orange,
-            paddingVertical: 14,
-            opacity: pressed || create.isPending ? 0.8 : 1,
-          })}
-        >
-          <Check size={18} color="#ffffff" />
-          <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#ffffff' }}>
-            {create.isPending ? 'Nyimpen...' : 'Simpan'}
-          </Text>
-        </Pressable>
-      </View>
-    </ScrollView>
-  )
-}
-
-function useSaveFlow() {
-  const router = useRouter()
+  const navigation = useNavigation()
+  const insets = useSafeAreaInsets()
   const { openPaywall } = useSubscription()
 
-  function done() {
-    if (router.canGoBack()) router.back()
-    else router.replace('/(tabs)/index')
+  const analyzeImage = useAnalyzeImage()
+  const analyzeAudio = useAnalyzeAudio()
+  const createLog = useCreateFoodLog()
+  const rec = useAudioRecording()
+
+  const [phase, setPhase] = useState<Phase>('choice')
+  const [draft, setDraft] = useState<DraftItem | null>(null)
+  const [analyzeStep, setAnalyzeStep] = useState(0)
+  const [transcript, setTranscript] = useState('')
+  const [previewUri, setPreviewUri] = useState<string | null>(null)
+
+  const dismiss = () => {
+    navigation.navigate('index' as never)
   }
 
-  function handleError(err: unknown) {
+  const handleQuotaError = (err: unknown) => {
     if (isQuotaExceeded(err)) {
       track('quota_blocked')
       Alert.alert('Jatah harian abis', 'Upgrade buat lanjut pakai fitur ini.', [
         { text: 'Nanti', style: 'cancel' },
         { text: 'Upgrade', onPress: () => void openPaywall() },
       ])
-      return
+      setPhase('choice')
+      return true
     }
-    Alert.alert('Gagal', apiErrorMessage(err))
+    return false
   }
 
-  return { done, handleError }
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>
+    if (phase === 'foto-analyzing' || phase === 'voice-analyzing') {
+      interval = setInterval(() => setAnalyzeStep((p) => (p + 1) % ANALYZE_STEPS.length), 1200)
+    } else {
+      setAnalyzeStep(0)
+    }
+    return () => clearInterval(interval)
+  }, [phase])
+
+  async function handleFoto() {
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync()
+      if (!perm.granted) {
+        const permGallery = await ImagePicker.requestMediaLibraryPermissionsAsync()
+        if (!permGallery.granted) {
+          Alert.alert('Izin dibutuhkan', 'Cimeat butuh akses kamera atau galeri.')
+          return
+        }
+        const res = await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.6 })
+        const asset = res.assets?.[0]
+        if (res.canceled || !asset?.base64) return
+        setPreviewUri(asset.uri)
+        setPhase('foto-analyzing')
+        track('log_food_photo')
+        const r = await analyzeImage.mutateAsync({
+          image: asset.base64,
+          mimeType: asset.mimeType ?? 'image/jpeg',
+          mealType: defaultMealType(),
+        })
+        setDraft(buildDraft(r, asset.uri, null, 'vision'))
+        setPhase('draft')
+        return
+      }
+      const res = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.6 })
+      const asset = res.assets?.[0]
+      if (res.canceled || !asset?.base64) return
+      setPreviewUri(asset.uri)
+      setPhase('foto-analyzing')
+      track('log_food_photo')
+      const r = await analyzeImage.mutateAsync({
+        image: asset.base64,
+        mimeType: asset.mimeType ?? 'image/jpeg',
+        mealType: defaultMealType(),
+      })
+      setDraft(buildDraft(r, asset.uri, null, 'vision'))
+      setPhase('draft')
+    } catch (err) {
+      if (!handleQuotaError(err)) {
+        Alert.alert('Gagal', apiErrorMessage(err))
+        setPhase('choice')
+      }
+    }
+  }
+
+  async function handleVoiceStop() {
+    try {
+      const clip = await rec.stop()
+      if (!clip) return
+      setPhase('voice-analyzing')
+      track('log_food_audio')
+      const r = await analyzeAudio.mutateAsync({ audio: clip.base64, mimeType: clip.mimeType })
+      const tx = (r as FoodAnalysis & { transcript?: string }).transcript ?? transcript
+      setDraft(buildDraft(r, null, tx || null, 'audio'))
+      setPhase('draft')
+    } catch (err) {
+      if (!handleQuotaError(err)) {
+        Alert.alert('Gagal', apiErrorMessage(err))
+        setPhase('voice')
+      }
+    }
+  }
+
+  async function handleVoiceStart() {
+    try {
+      await rec.start()
+      setPhase('voice')
+    } catch {
+      Alert.alert('Izin mikrofon', 'Cimeat butuh akses mikrofon buat catat pakai suara.')
+    }
+  }
+
+  async function handleSave() {
+    if (!draft) return
+    try {
+      const input: CreateFoodLogInput = {
+        source: draft.source,
+        mealType: draft.mealType,
+        foodName: draft.foodName,
+        estimatedWeightG: draft.estimatedWeightG || undefined,
+        calories: Math.round(draft.calories),
+        proteinG: draft.proteinG,
+        carbsG: draft.carbsG,
+        fatG: draft.fatG,
+        healthScore: draft.healthScore,
+        confidenceScore: draft.rawAnalysis.confidence_score,
+        note: draft.transcript || undefined,
+        eatenAt: nowIso(),
+      }
+      await createLog.mutateAsync(input)
+      setDraft(null)
+      setPhase('choice')
+      dismiss()
+    } catch (err) {
+      if (!handleQuotaError(err)) Alert.alert('Gagal', apiErrorMessage(err))
+    }
+  }
+
+  const paddingTop = insets.top + 8
+
+  if (phase === 'choice') {
+    return <ChoiceScreen paddingTop={paddingTop} onFoto={handleFoto} onVoice={handleVoiceStart} onDismiss={dismiss} />
+  }
+
+  if (phase === 'voice') {
+    return (
+      <VoiceScreen
+        paddingTop={paddingTop}
+        isRecording={rec.isRecording}
+        durationSec={rec.durationSec}
+        transcript={transcript}
+        onTranscript={setTranscript}
+        onStop={handleVoiceStop}
+        onDismiss={() => {
+          rec.stop().catch(() => {})
+          setPhase('choice')
+        }}
+      />
+    )
+  }
+
+  if (phase === 'foto-analyzing' || phase === 'voice-analyzing') {
+    return <AnalyzingScreen paddingTop={paddingTop} step={ANALYZE_STEPS[analyzeStep] ?? ANALYZE_STEPS[0]!} previewUri={phase === 'foto-analyzing' ? previewUri : null} />
+  }
+
+  if (phase === 'draft' && draft) {
+    return (
+      <DraftScreen
+        paddingTop={paddingTop}
+        draft={draft}
+        saving={createLog.isPending}
+        onChange={(patch) => setDraft((d) => d ? { ...d, ...patch } : d)}
+        onSave={handleSave}
+        onDismiss={() => { setDraft(null); setPhase('choice') }}
+      />
+    )
+  }
+
+  return null
+}
+
+function buildDraft(r: FoodAnalysis, uri: string | null, transcript: string | null, source: FoodLogSource): DraftItem {
+  return {
+    foodName: r.food_name,
+    calories: r.calories,
+    proteinG: r.macronutrients.protein_g,
+    carbsG: r.macronutrients.carbs_g,
+    fatG: r.macronutrients.fat_g,
+    healthScore: r.health_score,
+    estimatedWeightG: r.estimated_weight_g || 150,
+    mealType: defaultMealType(),
+    previewUri: uri,
+    transcript,
+    source,
+    rawAnalysis: r,
+  }
+}
+
+function ChoiceScreen({
+  paddingTop,
+  onFoto,
+  onVoice,
+  onDismiss,
+}: {
+  paddingTop: number
+  onFoto: () => void
+  onVoice: () => void
+  onDismiss: () => void
+}) {
+  const c = useThemeColors()
+  const cameraScale = useSharedValue(1)
+  const micScale = useSharedValue(1)
+
+  const cameraStyle = useAnimatedStyle(() => ({ transform: [{ scale: cameraScale.value }] }))
+  const micStyle = useAnimatedStyle(() => ({ transform: [{ scale: micScale.value }] }))
+
+  return (
+    <View style={{ flex: 1, backgroundColor: c.bg, paddingTop }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 20 }}>
+        <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 26, color: c.text }}>Catat makanan</Text>
+        <Pressable
+          onPress={onDismiss}
+          style={({ pressed }) => ({
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: c.cardAlt,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <X size={18} color={c.textSub} />
+        </Pressable>
+      </View>
+
+      <View style={{ flex: 1, paddingHorizontal: 20, gap: 12 }}>
+        <Pressable
+          onPressIn={() => { cameraScale.value = withSpring(0.97, { damping: 12 }) }}
+          onPressOut={() => { cameraScale.value = withSpring(1, { damping: 10 }) }}
+          onPress={onFoto}
+          style={{ flex: 1 }}
+        >
+          <Animated.View style={[{
+            flex: 1,
+            borderRadius: 32,
+            backgroundColor: '#FF6B35',
+            overflow: 'hidden',
+            justifyContent: 'flex-end',
+            padding: 28,
+            shadowColor: '#FF6B35',
+            shadowOffset: { width: 0, height: 12 },
+            shadowOpacity: 0.4,
+            shadowRadius: 24,
+            elevation: 10,
+          }, cameraStyle]}>
+            <View style={{ position: 'absolute', top: -20, right: -20, opacity: 0.12 }}>
+              <Camera size={160} color="#ffffff" />
+            </View>
+            <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+              <Camera size={22} color="#ffffff" />
+            </View>
+            <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 22, color: '#ffffff', lineHeight: 24 }}>
+              Scan AI
+            </Text>
+            <Text style={{ marginTop: 6, fontFamily: 'Outfit_400Regular', fontSize: 13, color: 'rgba(255,255,255,0.8)', lineHeight: 18 }}>
+              Foto makanan & deteksi instan
+            </Text>
+          </Animated.View>
+        </Pressable>
+
+        <Pressable
+          onPressIn={() => { micScale.value = withSpring(0.97, { damping: 12 }) }}
+          onPressOut={() => { micScale.value = withSpring(1, { damping: 10 }) }}
+          onPress={onVoice}
+          style={{ flex: 1 }}
+        >
+          <Animated.View style={[{
+            flex: 1,
+            borderRadius: 32,
+            backgroundColor: c.card,
+            justifyContent: 'flex-end',
+            padding: 28,
+            borderWidth: 1.5,
+            borderColor: c.border,
+            shadowColor: c.shadow,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.06,
+            shadowRadius: 16,
+            elevation: 3,
+          }, micStyle]}>
+            <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: c.cardAlt, alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+              <Mic size={22} color={c.orange} />
+            </View>
+            <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 22, color: c.text, lineHeight: 24 }}>
+              Voice Log
+            </Text>
+            <Text style={{ marginTop: 6, fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub, lineHeight: 18 }}>
+              Sebut aja makanan lo langsung
+            </Text>
+          </Animated.View>
+        </Pressable>
+      </View>
+
+      <View style={{ height: 120 }} />
+    </View>
+  )
+}
+
+function VoiceScreen({
+  paddingTop,
+  isRecording,
+  durationSec,
+  transcript,
+  onTranscript: _onTranscript,
+  onStop,
+  onDismiss,
+}: {
+  paddingTop: number
+  isRecording: boolean
+  durationSec: number
+  transcript: string
+  onTranscript: (t: string) => void
+  onStop: () => void
+  onDismiss: () => void
+}) {
+  const c = useThemeColors()
+  const btnScale = useSharedValue(1)
+  const btnStyle = useAnimatedStyle(() => ({ transform: [{ scale: btnScale.value }] }))
+
+  const pressStop = () => {
+    btnScale.value = withSequence(withSpring(0.86, { damping: 10 }), withSpring(1, { damping: 12 }))
+    onStop()
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: c.bg, paddingTop, alignItems: 'center' }}>
+      <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 16 }}>
+        <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 26, color: c.text }}>Voice Log</Text>
+        <Pressable
+          onPress={onDismiss}
+          style={({ pressed }) => ({
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: c.cardAlt,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <X size={18} color={c.textSub} />
+        </Pressable>
+      </View>
+
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 32, paddingHorizontal: 28 }}>
+        <Waveform active={isRecording} color="#818cf8" />
+
+        <View style={{ alignItems: 'center', gap: 8 }}>
+          <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 20, color: c.text, textAlign: 'center' }}>
+            {isRecording
+              ? transcript || 'Sebutkan makananmu...'
+              : 'Tap tombol untuk mulai'}
+          </Text>
+          {isRecording ? (
+            <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, letterSpacing: 1.2, textTransform: 'uppercase', color: '#818cf8', opacity: 0.7 }}>
+              Merekam · {durationSec}s
+            </Text>
+          ) : null}
+        </View>
+
+        <Pressable onPress={pressStop} disabled={!isRecording}>
+          <Animated.View style={[{
+            width: 72,
+            height: 72,
+            borderRadius: 36,
+            backgroundColor: isRecording ? '#ef4444' : '#818cf8',
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: isRecording ? '#ef4444' : '#818cf8',
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.45,
+            shadowRadius: 16,
+            elevation: 10,
+            opacity: isRecording ? 1 : 0.5,
+          }, btnStyle]}>
+            {isRecording ? (
+              <Square size={28} color="#fff" fill="#fff" />
+            ) : (
+              <Mic size={32} color="#fff" />
+            )}
+          </Animated.View>
+        </Pressable>
+      </View>
+
+      <View style={{ height: 120 }} />
+    </View>
+  )
+}
+
+function AnalyzingScreen({
+  paddingTop,
+  step,
+  previewUri,
+}: {
+  paddingTop: number
+  step: string
+  previewUri: string | null
+}) {
+  const c = useThemeColors()
+  const dotsOpacity = useSharedValue(0.3)
+
+  useEffect(() => {
+    dotsOpacity.value = withRepeat(
+      withSequence(withTiming(1, { duration: 600 }), withTiming(0.3, { duration: 600 })),
+      -1,
+      false,
+    )
+  }, [dotsOpacity])
+
+  const dotStyle = useAnimatedStyle(() => ({ opacity: dotsOpacity.value }))
+
+  return (
+    <View style={{ flex: 1, backgroundColor: c.bg, paddingTop, alignItems: 'center', justifyContent: 'center', gap: 24, paddingHorizontal: 32 }}>
+      {previewUri ? (
+        <Image source={{ uri: previewUri }} style={{ width: '100%', height: 180, borderRadius: 24 }} resizeMode="cover" />
+      ) : (
+        <Waveform active color="#818cf8" />
+      )}
+
+      <ActivityIndicator size="large" color={c.orange} />
+
+      <View style={{ alignItems: 'center', gap: 6 }}>
+        <Animated.Text style={[{
+          fontFamily: 'Outfit_700Bold',
+          fontSize: 14,
+          letterSpacing: 0.6,
+          textTransform: 'uppercase',
+          color: c.orange,
+        }, dotStyle]}>
+          {step}
+        </Animated.Text>
+        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub, textAlign: 'center' }}>
+          Cimit lagi nganalisa makanan lo...
+        </Text>
+      </View>
+    </View>
+  )
+}
+
+function DraftScreen({
+  paddingTop,
+  draft,
+  saving,
+  onChange,
+  onSave,
+  onDismiss,
+}: {
+  paddingTop: number
+  draft: DraftItem
+  saving: boolean
+  onChange: (patch: Partial<DraftItem>) => void
+  onSave: () => void
+  onDismiss: () => void
+}) {
+  const c = useThemeColors()
+
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: c.bg }}
+      contentContainerStyle={{ paddingTop, paddingHorizontal: 20, paddingBottom: 120 }}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 24, color: c.text }}>Hasil Analisa AI</Text>
+        <Pressable
+          onPress={onDismiss}
+          style={({ pressed }) => ({
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: c.cardAlt,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <X size={18} color={c.textSub} />
+        </Pressable>
+      </View>
+
+      <View style={{ borderRadius: 32, backgroundColor: c.card, overflow: 'hidden', shadowColor: c.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 20, elevation: 5 }}>
+        {draft.previewUri ? (
+          <Image source={{ uri: draft.previewUri }} style={{ width: '100%', height: 160, backgroundColor: c.cardAlt }} resizeMode="cover" />
+        ) : (
+          <View style={{ height: 80, backgroundColor: '#F0EEFF', alignItems: 'center', justifyContent: 'center' }}>
+            <Waveform active={false} color="#818cf8" />
+          </View>
+        )}
+
+        <View style={{ padding: 24, gap: 20 }}>
+          <View style={{ alignItems: 'center', gap: 6 }}>
+            <TextInput
+              value={draft.foodName}
+              onChangeText={(t) => onChange({ foodName: t })}
+              style={{
+                fontFamily: 'Outfit_900Black',
+                fontSize: 22,
+                color: c.text,
+                textAlign: 'center',
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+                paddingVertical: 4,
+                borderBottomWidth: 1,
+                borderBottomColor: c.border,
+                width: '100%',
+              }}
+              placeholderTextColor={c.textSub}
+            />
+            <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 40, color: c.orange, letterSpacing: -1 }}>
+              {Math.round(draft.calories)}
+              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: c.textSub }}> kkal</Text>
+            </Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <MacroBox label="Protein" value={draft.proteinG} color="#22C55E" />
+            <MacroBox label="Karbo" value={draft.carbsG} color="#F59E0B" />
+            <MacroBox label="Lemak" value={draft.fatG} color="#EF4444" />
+          </View>
+
+          <View style={{ gap: 10 }}>
+            <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: c.textSub }}>
+              Kategori
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {MEAL_CATS.map((cat) => {
+                const active = draft.mealType === cat.key
+                return (
+                  <Pressable
+                    key={cat.key}
+                    onPress={() => onChange({ mealType: cat.key })}
+                    style={({ pressed }) => ({
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      borderRadius: 99,
+                      backgroundColor: active ? c.orange : c.cardAlt,
+                      opacity: pressed ? 0.8 : 1,
+                    })}
+                  >
+                    <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 13, color: active ? '#ffffff' : c.textSub }}>
+                      {cat.label}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </View>
+
+          {draft.transcript ? (
+            <View style={{ borderRadius: 16, backgroundColor: c.cardAlt, padding: 14 }}>
+              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase', color: c.textSub, marginBottom: 6 }}>
+                Transcript Suara
+              </Text>
+              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.text, lineHeight: 20, fontStyle: 'italic' }}>
+                &ldquo;{draft.transcript}&rdquo;
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+
+      <Pressable
+        onPress={onSave}
+        disabled={saving}
+        style={({ pressed }) => ({
+          marginTop: 16,
+          borderRadius: 99,
+          backgroundColor: c.orange,
+          paddingVertical: 18,
+          alignItems: 'center',
+          flexDirection: 'row',
+          justifyContent: 'center',
+          gap: 10,
+          opacity: pressed || saving ? 0.8 : 1,
+          shadowColor: c.orange,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.4,
+          shadowRadius: 16,
+          elevation: 8,
+        })}
+      >
+        {saving ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <>
+            <Check size={20} color="#ffffff" />
+            <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 16, color: '#ffffff', letterSpacing: 0.3 }}>
+              Simpan ke Riwayat
+            </Text>
+          </>
+        )}
+      </Pressable>
+    </ScrollView>
+  )
+}
+
+function MacroBox({ label, value, color }: { label: string; value: number; color: string }) {
+  const c = useThemeColors()
+  return (
+    <View style={{ flex: 1, borderRadius: 16, backgroundColor: c.cardAlt, padding: 12, alignItems: 'center', gap: 4 }}>
+      <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 18, color }}>{Math.round(value)}</Text>
+      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 9, letterSpacing: 0.8, textTransform: 'uppercase', color: c.textSub }}>{label} g</Text>
+    </View>
+  )
 }
