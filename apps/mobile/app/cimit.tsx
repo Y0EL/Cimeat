@@ -11,6 +11,15 @@ import {
   TextInput,
   View,
 } from 'react-native'
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { TtsButton } from '~/components/cimit/tts-button'
 import { ScreenFade } from '~/components/screen-fade'
@@ -18,6 +27,7 @@ import { useCimitHistory, useRefreshCimitHistory } from '~/hooks/use-cimit'
 import { useProfile } from '~/hooks/use-summary'
 import { apiErrorMessage, apiStream } from '~/lib/api'
 import { track } from '~/lib/analytics'
+import { useThemeColors } from '~/lib/theme'
 
 type Msg = { id: string; role: 'user' | 'model'; content: string }
 
@@ -30,7 +40,30 @@ const SUGGESTIONS = [
   'Tips makan tinggi protein',
 ]
 
+function Dot({ delay, color }: { delay: number; color: string }) {
+  const opacity = useSharedValue(0.3)
+  useEffect(() => {
+    opacity.value = withDelay(
+      delay,
+      withRepeat(withSequence(withTiming(1, { duration: 400 }), withTiming(0.3, { duration: 400 })), -1, false),
+    )
+  }, [opacity, delay])
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }))
+  return <Animated.View style={[{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: color }, style]} />
+}
+
+function TypingDots({ color }: { color: string }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 5, paddingVertical: 4 }}>
+      <Dot delay={0} color={color} />
+      <Dot delay={150} color={color} />
+      <Dot delay={300} color={color} />
+    </View>
+  )
+}
+
 export default function CimitChatScreen() {
+  const c = useThemeColors()
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const profile = useProfile()
@@ -99,31 +132,30 @@ export default function CimitChatScreen() {
   const empty = messages.length === 0
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F7F4' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top']}>
       <ScreenFade>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          className="flex-1"
-          style={{ paddingBottom: Math.max(insets.bottom, 8) }}
+          style={{ flex: 1, paddingBottom: Math.max(insets.bottom, 8) }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingBottom: 8, paddingTop: 8 }}>
             <Pressable
               onPress={() => router.back()}
-              style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#FFFFFF' }}
+              style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: c.card }}
             >
-              <ChevronLeft size={20} color="#8A8886" />
+              <ChevronLeft size={20} color={c.textSub} />
             </Pressable>
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#FF6B35', alignItems: 'center', justifyContent: 'center' }}>
               <Sparkles size={20} color="#ffffff" />
             </View>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 18, color: '#1A1C1E' }}>
+                <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 18, color: c.text }}>
                   Cimit AI
                 </Text>
                 <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#22C55E' }} />
               </View>
-              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>
+              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>
                 mode {tone}
               </Text>
             </View>
@@ -140,10 +172,10 @@ export default function CimitChatScreen() {
                 <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: '#FF6B35', alignItems: 'center', justifyContent: 'center', shadowColor: '#FF6B35', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 8 }}>
                   <Sparkles size={40} color="#ffffff" />
                 </View>
-                <Text style={{ marginTop: 20, textAlign: 'center', fontFamily: 'Outfit_900Black', fontSize: 22, color: '#1A1C1E' }}>
+                <Text style={{ marginTop: 20, textAlign: 'center', fontFamily: 'Outfit_900Black', fontSize: 22, color: c.text }}>
                   Halo, gue Cimit!
                 </Text>
-                <Text style={{ marginTop: 8, maxWidth: 280, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 14, lineHeight: 22, color: '#8A8886' }}>
+                <Text style={{ marginTop: 8, maxWidth: 280, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 14, lineHeight: 22, color: c.textSub }}>
                   Tanya apa aja soal makanan & target lo. Gue bantu hitung, saranin, dan kadang
                   roast dikit biar lo on-track.
                 </Text>
@@ -155,21 +187,22 @@ export default function CimitChatScreen() {
                       style={({ pressed }) => ({
                         borderRadius: 16,
                         borderWidth: 1,
-                        borderColor: '#FF6B3530',
-                        backgroundColor: pressed ? '#FFF3EE' : '#FFFFFF',
+                        borderColor: c.dark ? '#FF6B3550' : '#FF6B3530',
+                        backgroundColor: pressed ? c.orangeSoft : c.card,
                         paddingHorizontal: 16,
                         paddingVertical: 12,
                       })}
                     >
-                      <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#1A1C1E' }}>{s}</Text>
+                      <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: c.text }}>{s}</Text>
                     </Pressable>
                   ))}
                 </View>
               </View>
             ) : (
               messages.map((m, i) => (
-                <View
+                <Animated.View
                   key={m.id || String(i)}
+                  entering={FadeInDown.duration(280)}
                   style={{ marginBottom: 8, maxWidth: '82%', alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start' }}
                 >
                   <View
@@ -179,39 +212,43 @@ export default function CimitChatScreen() {
                       borderBottomLeftRadius: m.role === 'model' ? 6 : 20,
                       paddingHorizontal: 16,
                       paddingVertical: 12,
-                      backgroundColor: m.role === 'user' ? '#FF6B35' : '#FFFFFF',
+                      backgroundColor: m.role === 'user' ? '#FF6B35' : c.card,
                       borderLeftWidth: m.role === 'model' ? 3 : 0,
                       borderLeftColor: '#FF6B35',
                     }}
                   >
-                    <Text
-                      style={{
-                        fontFamily: 'Outfit_400Regular',
-                        fontSize: 14,
-                        lineHeight: 22,
-                        color: m.role === 'user' ? '#ffffff' : '#1A1C1E',
-                      }}
-                    >
-                      {m.content || '...'}
-                    </Text>
+                    {m.id === STREAM_ID && !m.content ? (
+                      <TypingDots color="#FF6B35" />
+                    ) : (
+                      <Text
+                        style={{
+                          fontFamily: 'Outfit_400Regular',
+                          fontSize: 14,
+                          lineHeight: 22,
+                          color: m.role === 'user' ? '#ffffff' : c.text,
+                        }}
+                      >
+                        {m.content}
+                      </Text>
+                    )}
                   </View>
                   {m.role === 'model' && m.content && m.id !== STREAM_ID ? (
                     <View style={{ marginTop: 4, alignSelf: 'flex-start' }}>
                       <TtsButton text={m.content} tone={tone} size={15} />
                     </View>
                   ) : null}
-                </View>
+                </Animated.View>
               ))
             )}
           </ScrollView>
 
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, borderTopWidth: 1, borderTopColor: '#FF6B3520', paddingHorizontal: 16, paddingVertical: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, borderTopWidth: 1, borderTopColor: c.dark ? '#FF6B3530' : '#FF6B3520', paddingHorizontal: 16, paddingVertical: 12 }}>
             <TextInput
               value={input}
               onChangeText={setInput}
               placeholder="Ketik ke Cimit..."
-              placeholderTextColor="#8A8886"
-              style={{ flex: 1, borderRadius: 20, backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#1A1C1E', maxHeight: 120 }}
+              placeholderTextColor={c.textSub}
+              style={{ flex: 1, borderRadius: 20, backgroundColor: c.card, paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 14, color: c.text, maxHeight: 120 }}
               multiline
               maxLength={2000}
               returnKeyType="send"
