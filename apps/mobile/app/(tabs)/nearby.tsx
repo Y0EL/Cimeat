@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MapPin, Navigation, Sparkles, Utensils } from 'lucide-react-native'
+import { Banknote, MapPin, Navigation, Salad, Scale, Sparkles, Utensils } from 'lucide-react-native'
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { EatingMode, NearbyResponse } from '@cimeat/types'
@@ -11,14 +11,18 @@ import { useSubscription } from '~/hooks/use-subscription'
 import { apiErrorMessage, isQuotaExceeded } from '~/lib/api'
 import { track } from '~/lib/analytics'
 import { getCurrentCoords } from '~/lib/location'
+import { useThemeColors } from '~/lib/theme'
 
-const MODES: { key: EatingMode; label: string; emoji: string }[] = [
-  { key: 'hemat', label: 'Hemat', emoji: '💸' },
-  { key: 'sehat', label: 'Sehat', emoji: '🥗' },
-  { key: 'balanced', label: 'Seimbang', emoji: '⚖️' },
+type ModeItem = { key: EatingMode; label: string; Icon: typeof Banknote; color: string }
+
+const MODES: ModeItem[] = [
+  { key: 'hemat', label: 'Hemat', Icon: Banknote, color: '#f59e0b' },
+  { key: 'sehat', label: 'Sehat', Icon: Salad, color: '#22C55E' },
+  { key: 'balanced', label: 'Seimbang', Icon: Scale, color: '#818cf8' },
 ]
 
 export default function NearbyTab() {
+  const c = useThemeColors()
   const recommend = useNearbyRecommend()
   const { openPaywall } = useSubscription()
   const [mode, setMode] = useState<EatingMode>('balanced')
@@ -59,17 +63,20 @@ export default function NearbyTab() {
   const busy = locating || recommend.isPending
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F7F4' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top']}>
       <ScreenFade>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 4, paddingTop: 12 }}>
-          <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 26, color: '#1A1C1E' }}>
-            Makan di sekitar
-          </Text>
+          <View>
+            <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub }}>Cari warung</Text>
+            <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 26, color: c.text }}>
+              Makan di sekitar
+            </Text>
+          </View>
           <QuotaBadge feature="nearby" />
         </View>
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120, paddingTop: 12 }} showsVerticalScrollIndicator={false}>
-          <Text style={{ marginBottom: 8, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: '#8A8886' }}>
+          <Text style={{ marginBottom: 8, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: c.textSub }}>
             Mode
           </Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -83,13 +90,15 @@ export default function NearbyTab() {
                     flex: 1,
                     alignItems: 'center',
                     borderRadius: 20,
-                    backgroundColor: active ? '#FF6B35' : '#FFFFFF',
+                    backgroundColor: active ? m.color : c.card,
                     paddingVertical: 14,
                     opacity: pressed ? 0.85 : 1,
                   })}
                 >
-                  <Text style={{ fontSize: 20 }}>{m.emoji}</Text>
-                  <Text style={{ marginTop: 4, fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : '#8A8886' }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: active ? 'rgba(255,255,255,0.2)' : c.cardAlt, alignItems: 'center', justifyContent: 'center' }}>
+                    <m.Icon size={18} color={active ? '#ffffff' : c.textSub} />
+                  </View>
+                  <Text style={{ marginTop: 6, fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : c.textSub }}>
                     {m.label}
                   </Text>
                 </Pressable>
@@ -107,7 +116,7 @@ export default function NearbyTab() {
               justifyContent: 'center',
               gap: 8,
               borderRadius: 99,
-              backgroundColor: '#FF6B35',
+              backgroundColor: c.orange,
               paddingVertical: 14,
               opacity: pressed || busy ? 0.7 : 1,
             })}
@@ -126,10 +135,10 @@ export default function NearbyTab() {
 
           {!result && !busy ? (
             <View style={{ marginTop: 32, alignItems: 'center' }}>
-              <View style={{ width: 72, height: 72, alignItems: 'center', justifyContent: 'center', borderRadius: 36, backgroundColor: '#FFF3EE' }}>
-                <MapPin size={30} color="#FF6B35" />
+              <View style={{ width: 72, height: 72, alignItems: 'center', justifyContent: 'center', borderRadius: 36, backgroundColor: c.orangeSoft }}>
+                <MapPin size={30} color={c.orange} />
               </View>
-              <Text style={{ marginTop: 16, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 14, lineHeight: 22, color: '#8A8886' }}>
+              <Text style={{ marginTop: 16, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 14, lineHeight: 22, color: c.textSub }}>
                 Pilih mode terus tap tombol di atas. Cimit bakal saranin makanan terdekat yang cocok.
               </Text>
             </View>
@@ -149,29 +158,29 @@ export default function NearbyTab() {
 
               <View style={{ gap: 10 }}>
                 {result.items.map((item, i) => (
-                  <View key={`${item.name}-${i}`} style={{ borderRadius: 24, backgroundColor: '#FFFFFF', padding: 16, shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+                  <View key={`${item.name}-${i}`} style={{ borderRadius: 24, backgroundColor: c.card, padding: 16, shadowColor: c.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: '#1A1C1E' }}>
+                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: c.text }}>
                           {item.name}
                         </Text>
-                        <Text style={{ marginTop: 2, fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>
+                        <Text style={{ marginTop: 2, fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>
                           {item.food_type} · {item.distance_m} m
                         </Text>
                       </View>
-                      <View style={{ borderRadius: 12, backgroundColor: '#FFF3EE', paddingHorizontal: 10, paddingVertical: 4 }}>
-                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 13, color: '#FF6B35' }}>
+                      <View style={{ borderRadius: 12, backgroundColor: c.orangeSoft, paddingHorizontal: 10, paddingVertical: 4 }}>
+                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 13, color: c.orange }}>
                           ~{item.estimated_calories} kkal
                         </Text>
                       </View>
                     </View>
                     <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Utensils size={13} color="#FF6B35" />
-                      <Text style={{ flex: 1, fontFamily: 'Outfit_700Bold', fontSize: 12, color: '#1A1C1E' }}>
+                      <Utensils size={13} color={c.orange} />
+                      <Text style={{ flex: 1, fontFamily: 'Outfit_700Bold', fontSize: 12, color: c.text }}>
                         Pesan: {item.suggested_order}
                       </Text>
                     </View>
-                    <Text style={{ marginTop: 4, fontFamily: 'Outfit_400Regular', fontSize: 12, lineHeight: 18, color: '#8A8886' }}>
+                    <Text style={{ marginTop: 4, fontFamily: 'Outfit_400Regular', fontSize: 12, lineHeight: 18, color: c.textSub }}>
                       {item.reason}
                     </Text>
                   </View>

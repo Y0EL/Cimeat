@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
-  Globe,
   Heart,
   LogOut,
   Monitor,
@@ -26,14 +25,7 @@ import { useSubscription } from '~/hooks/use-subscription'
 import { signOutUser } from '~/lib/auth'
 import { apiErrorMessage } from '~/lib/api'
 import { getCimitVoice, setCimitVoice } from '~/lib/cimit-voice'
-import { useLang, type Lang } from '~/lib/lang-context'
-import { useTheme, type ThemePref } from '~/lib/theme'
-
-const LANG_OPTIONS: { key: Lang; label: string }[] = [
-  { key: 'id', label: 'ID' },
-  { key: 'en', label: 'EN' },
-  { key: 'zh', label: '中' },
-]
+import { useTheme, useThemeColors, type ThemePref } from '~/lib/theme'
 
 const TONES: { key: CimitTone; label: string; hint: string }[] = [
   { key: 'soft', label: 'Lembut', hint: 'Sabar & nyemangatin' },
@@ -53,6 +45,7 @@ const VOICES: { key: CimitVoice; label: string; hint: string }[] = [
 ]
 
 export default function ProfileScreen() {
+  const c = useThemeColors()
   const router = useRouter()
   const { user } = useAuth()
   const profile = useProfile()
@@ -87,33 +80,33 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F7F4' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top']}>
       <ScreenFade>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 8 }}>
           <Pressable
             onPress={() => router.back()}
-            style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#FFFFFF' }}
+            style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: c.card }}
           >
-            <ChevronLeft size={20} color="#8A8886" />
+            <ChevronLeft size={20} color={c.textSub} />
           </Pressable>
-          <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 22, color: '#1A1C1E' }}>
+          <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 22, color: c.text }}>
             Profil
           </Text>
         </View>
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 64 }} showsVerticalScrollIndicator={false}>
-          <View style={{ marginHorizontal: 16, marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 16, borderRadius: 24, backgroundColor: '#FFFFFF', padding: 16, shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
-            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#FFF3EE', borderWidth: 3, borderColor: '#FF6B35', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ marginHorizontal: 16, marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 16, borderRadius: 24, backgroundColor: c.card, padding: 16, shadowColor: c.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: c.orangeSoft, borderWidth: 3, borderColor: '#FF6B35', alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 22, color: '#FF6B35' }}>
                 {initial}
               </Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: '#1A1C1E' }}>
+              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: c.text }}>
                 {user?.displayName ?? 'Tamu Cimeat'}
               </Text>
               {user?.email ? (
-                <Text style={{ marginTop: 2, fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#8A8886' }}>
+                <Text style={{ marginTop: 2, fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub }}>
                   {user.email}
                 </Text>
               ) : null}
@@ -157,7 +150,7 @@ export default function ProfileScreen() {
 
           <Section title="Kepribadian Cimit">
             <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
-              <Text style={{ marginBottom: 8, fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>
+              <Text style={{ marginBottom: 8, fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>
                 Mau Cimit selembut apa?
               </Text>
               <View style={{ gap: 8 }}>
@@ -174,23 +167,23 @@ export default function ProfileScreen() {
                         borderRadius: 16,
                         borderWidth: 2,
                         borderColor: active ? '#FF6B35' : 'transparent',
-                        backgroundColor: active ? '#FFF3EE' : '#F8F7F4',
+                        backgroundColor: active ? c.orangeSoft : c.cardAlt,
                         paddingHorizontal: 12,
                         paddingVertical: 10,
                       }}
                     >
-                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: active ? '#FF6B35' : '#E8E6E0', alignItems: 'center', justifyContent: 'center' }}>
-                        <Sparkles size={14} color={active ? '#ffffff' : '#8A8886'} />
+                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: active ? '#FF6B35' : c.border, alignItems: 'center', justifyContent: 'center' }}>
+                        <Sparkles size={14} color={active ? '#ffffff' : c.textSub} />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#1A1C1E' }}>
+                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.text }}>
                           {t.label}
                         </Text>
-                        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>
+                        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>
                           {t.hint}
                         </Text>
                       </View>
-                      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: active ? '#FF6B35' : 'transparent', borderWidth: active ? 0 : 1.5, borderColor: '#D0CEC9' }} />
+                      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: active ? '#FF6B35' : 'transparent', borderWidth: active ? 0 : 1.5, borderColor: c.textFaint }} />
                     </Pressable>
                   )
                 })}
@@ -198,7 +191,7 @@ export default function ProfileScreen() {
             </View>
             <Divider />
             <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
-              <Text style={{ marginBottom: 8, fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}>
+              <Text style={{ marginBottom: 8, fontFamily: 'Outfit_400Regular', fontSize: 15, color: c.text }}>
                 Suara Cimit
               </Text>
               <View style={{ gap: 8 }}>
@@ -215,20 +208,20 @@ export default function ProfileScreen() {
                         borderRadius: 16,
                         borderWidth: 2,
                         borderColor: active ? '#FF6B35' : 'transparent',
-                        backgroundColor: active ? '#FFF3EE' : '#F8F7F4',
+                        backgroundColor: active ? c.orangeSoft : c.cardAlt,
                         paddingHorizontal: 12,
                         paddingVertical: 10,
                       }}
                     >
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#1A1C1E' }}>
+                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.text }}>
                           {v.label}
                         </Text>
-                        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>
+                        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>
                           {v.hint}
                         </Text>
                       </View>
-                      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: active ? '#FF6B35' : 'transparent', borderWidth: active ? 0 : 1.5, borderColor: '#D0CEC9' }} />
+                      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: active ? '#FF6B35' : 'transparent', borderWidth: active ? 0 : 1.5, borderColor: c.textFaint }} />
                     </Pressable>
                   )
                 })}
@@ -236,10 +229,10 @@ export default function ProfileScreen() {
             </View>
             <Divider />
             <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
-              <Text style={{ marginBottom: 8, fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}>
+              <Text style={{ marginBottom: 8, fontFamily: 'Outfit_400Regular', fontSize: 15, color: c.text }}>
                 Mode makan default
               </Text>
-              <View style={{ flexDirection: 'row', gap: 4, borderRadius: 99, backgroundColor: '#F8F7F4', padding: 4 }}>
+              <View style={{ flexDirection: 'row', gap: 4, borderRadius: 99, backgroundColor: c.cardAlt, padding: 4 }}>
                 {MODES.map((m) => {
                   const active = defaultMode === m.key
                   return (
@@ -248,7 +241,7 @@ export default function ProfileScreen() {
                       onPress={() => setMode(m.key)}
                       style={{ flex: 1, alignItems: 'center', borderRadius: 99, paddingVertical: 8, backgroundColor: active ? '#FF6B35' : 'transparent' }}
                     >
-                      <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : '#8A8886' }}>
+                      <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : c.textSub }}>
                         {m.label}
                       </Text>
                     </Pressable>
@@ -260,14 +253,14 @@ export default function ProfileScreen() {
 
           <Section title="Target & makanan">
             <Row
-              icon={<Target size={18} color="#71717a" />}
+              icon={<Target size={18} color={c.textSub} />}
               label="Target nutrisi"
               hint="Atur kalori & makro harian"
               onPress={() => router.push('/goals')}
             />
             <Divider />
             <Row
-              icon={<Apple size={18} color="#71717a" />}
+              icon={<Apple size={18} color={c.textSub} />}
               label="Makanan Saya"
               hint="Makanan custom & favorit"
               onPress={() => router.push('/foods')}
@@ -276,29 +269,27 @@ export default function ProfileScreen() {
 
           <Section title="Aplikasi">
             <ThemeSelector />
-            <Divider />
-            <LangSelector />
           </Section>
 
           <Section title="Langganan & legal">
             <Row
-              icon={<CreditCard size={18} color="#71717a" />}
+              icon={<CreditCard size={18} color={c.textSub} />}
               label="Customer Center"
               hint="Kelola langganan & invoice"
               onPress={() => void openCustomerCenter()}
             />
             <Divider />
             <Row
-              icon={<Heart size={18} color="#71717a" />}
+              icon={<Heart size={18} color={c.textSub} />}
               label="Pulihkan pembelian"
               onPress={onRestore}
             />
             <Divider />
-            <Row icon={<Shield size={18} color="#71717a" />} label="Kebijakan privasi" />
+            <Row icon={<Shield size={18} color={c.textSub} />} label="Kebijakan privasi" />
           </Section>
 
-          <View style={{ marginHorizontal: 16, marginTop: 20, borderRadius: 20, backgroundColor: '#FFF3EE', paddingHorizontal: 16, paddingVertical: 12 }}>
-            <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, lineHeight: 18, color: '#8A8886' }}>
+          <View style={{ marginHorizontal: 16, marginTop: 20, borderRadius: 20, backgroundColor: c.orangeSoft, paddingHorizontal: 16, paddingVertical: 12 }}>
+            <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, lineHeight: 18, color: c.textSub }}>
               Cimeat & Cimit kasih estimasi buat bantu lo aware sama makanan. Ini bukan saran
               medis. Konsultasi ke ahli gizi/dokter buat kebutuhan kesehatan spesifik ya.
             </Text>
@@ -309,48 +300,16 @@ export default function ProfileScreen() {
               accessibilityRole="button"
               accessibilityLabel="Keluar"
               onPress={() => signOutUser().catch(() => {})}
-              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 24, backgroundColor: '#FFFFFF', paddingVertical: 14, opacity: pressed ? 0.75 : 1 })}
+              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 24, backgroundColor: c.card, paddingVertical: 14, opacity: pressed ? 0.75 : 1 })}
             >
               <LogOut size={16} color="#ef4444" />
               <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#ef4444' }}>Keluar</Text>
             </Pressable>
-            <Text style={{ marginTop: 20, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#D0CEC9' }}>Cimeat v0.2.0</Text>
+            <Text style={{ marginTop: 20, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textFaint }}>Cimeat v0.2.0</Text>
           </View>
         </ScrollView>
       </ScreenFade>
     </SafeAreaView>
-  )
-}
-
-function LangSelector() {
-  const { lang, setLang } = useLang()
-  return (
-    <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#F8F7F4' }}>
-          <Globe size={18} color="#8A8886" />
-        </View>
-        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}>Bahasa</Text>
-      </View>
-      <View style={{ marginTop: 12, flexDirection: 'row', gap: 4, borderRadius: 99, backgroundColor: '#F8F7F4', padding: 4 }}>
-        {LANG_OPTIONS.map((opt) => {
-          const active = lang === opt.key
-          return (
-            <Pressable
-              key={opt.key}
-              onPress={() => setLang(opt.key)}
-              accessibilityRole="button"
-              accessibilityLabel={opt.label}
-              style={{ flex: 1, alignItems: 'center', borderRadius: 99, paddingVertical: 8, backgroundColor: active ? '#FF6B35' : 'transparent' }}
-            >
-              <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : '#8A8886' }}>
-                {opt.label}
-              </Text>
-            </Pressable>
-          )
-        })}
-      </View>
-    </View>
   )
 }
 
@@ -361,16 +320,17 @@ const themeOptions: { key: ThemePref; label: string; icon: typeof Sun }[] = [
 ]
 
 function ThemeSelector() {
+  const c = useThemeColors()
   const { pref, setPref } = useTheme()
   return (
     <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#F8F7F4' }}>
-          <Moon size={18} color="#8A8886" />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+        <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: c.cardAlt }}>
+          <Moon size={18} color={c.textSub} />
         </View>
-        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}>Tema</Text>
+        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 15, color: c.text }}>Tema</Text>
       </View>
-      <View style={{ marginTop: 12, flexDirection: 'row', gap: 4, borderRadius: 99, backgroundColor: '#F8F7F4', padding: 4 }}>
+      <View style={{ flexDirection: 'row', gap: 4, borderRadius: 99, backgroundColor: c.cardAlt, padding: 4 }}>
         {themeOptions.map((opt) => {
           const active = pref === opt.key
           const Icon = opt.icon
@@ -382,8 +342,8 @@ function ThemeSelector() {
               onPress={() => setPref(opt.key)}
               style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 99, paddingVertical: 8, backgroundColor: active ? '#FF6B35' : 'transparent' }}
             >
-              <Icon size={14} color={active ? '#ffffff' : '#8A8886'} />
-              <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : '#8A8886' }}>
+              <Icon size={14} color={active ? '#ffffff' : c.textSub} />
+              <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : c.textSub }}>
                 {opt.label}
               </Text>
             </Pressable>
@@ -395,12 +355,13 @@ function ThemeSelector() {
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const c = useThemeColors()
   return (
     <View style={{ marginHorizontal: 16, marginTop: 24 }}>
-      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: '#8A8886' }}>
+      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: c.textSub }}>
         {title}
       </Text>
-      <View style={{ marginTop: 10, overflow: 'hidden', borderRadius: 24, backgroundColor: '#FFFFFF', shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+      <View style={{ marginTop: 10, overflow: 'hidden', borderRadius: 24, backgroundColor: c.card, shadowColor: c.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
         {children}
       </View>
     </View>
@@ -408,7 +369,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Divider() {
-  return <View style={{ marginLeft: 64, height: 1, backgroundColor: '#F0EEE9' }} />
+  const c = useThemeColors()
+  return <View style={{ marginLeft: 64, height: 1, backgroundColor: c.border }} />
 }
 
 function Row({
@@ -422,21 +384,22 @@ function Row({
   hint?: string
   onPress?: () => void
 }) {
+  const c = useThemeColors()
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14, backgroundColor: pressed ? '#FFF3EE' : 'transparent' })}
+      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14, backgroundColor: pressed ? c.orangeSoft : 'transparent' })}
     >
-      <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#F8F7F4' }}>
+      <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: c.cardAlt }}>
         {icon}
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}>{label}</Text>
+        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 15, color: c.text }}>{label}</Text>
         {hint ? (
-          <Text style={{ marginTop: 2, fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>{hint}</Text>
+          <Text style={{ marginTop: 2, fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>{hint}</Text>
         ) : null}
       </View>
-      <ChevronRight size={16} color="#D0CEC9" />
+      <ChevronRight size={16} color={c.textFaint} />
     </Pressable>
   )
 }

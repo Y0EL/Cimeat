@@ -12,7 +12,11 @@ export function useCimitHistory() {
 export function useDailyAdvice() {
   return useQuery({
     queryKey: ['cimit-advice'],
-    queryFn: () => apiFetch<{ message: string }>('/v1/cimit/daily-advice', { method: 'POST' }),
+    queryFn: () =>
+      apiFetch<{ message: string }>('/v1/cimit/daily-advice', {
+        method: 'POST',
+        body: JSON.stringify({}),
+      }),
     staleTime: 5 * 60_000,
     retry: 0,
   })

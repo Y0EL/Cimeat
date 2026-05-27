@@ -1,7 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useQueryClient } from '@tanstack/react-query'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { Camera, CheckCircle2, Droplets, Flame, Mic, Plus, Sparkles, UtensilsCrossed } from 'lucide-react-native'
+import {
+  Apple,
+  Camera,
+  CheckCircle2,
+  ClipboardList,
+  Droplets,
+  Mic,
+  Moon,
+  Plus,
+  Sunrise,
+  Sun,
+  Target,
+  UtensilsCrossed,
+} from 'lucide-react-native'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
@@ -19,12 +32,15 @@ import { useDailyAdvice, useRoast } from '~/hooks/use-cimit'
 import { useFoodLogs } from '~/hooks/use-food-logs'
 import { useProfile, useDailySummary, todayDate } from '~/hooks/use-summary'
 import { useSubscription } from '~/hooks/use-subscription'
+import { useThemeColors } from '~/lib/theme'
 
-const MEAL_GROUPS: { type: MealType; label: string; emoji: string }[] = [
-  { type: 'breakfast', label: 'Sarapan', emoji: '🍳' },
-  { type: 'lunch', label: 'Makan Siang', emoji: '🍱' },
-  { type: 'dinner', label: 'Makan Malam', emoji: '🍲' },
-  { type: 'snack', label: 'Camilan', emoji: '🍪' },
+type MealGroup = { type: MealType; label: string; Icon: typeof Sun; accent: string }
+
+const MEAL_GROUPS: MealGroup[] = [
+  { type: 'breakfast', label: 'Sarapan', Icon: Sunrise, accent: '#f59e0b' },
+  { type: 'lunch', label: 'Makan Siang', Icon: Sun, accent: '#FF6B35' },
+  { type: 'dinner', label: 'Makan Malam', Icon: Moon, accent: '#818cf8' },
+  { type: 'snack', label: 'Camilan', Icon: Apple, accent: '#22C55E' },
 ]
 
 function getGreeting(): string {
@@ -41,6 +57,7 @@ function waterKey() {
 }
 
 function WaterTracker() {
+  const c = useThemeColors()
   const [glasses, setGlasses] = useState(0)
 
   useEffect(() => {
@@ -56,13 +73,13 @@ function WaterTracker() {
   }
 
   return (
-    <View style={{ marginHorizontal: 16, marginTop: 16, borderRadius: 24, backgroundColor: '#FFFFFF', padding: 16, shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
+    <View style={{ marginHorizontal: 16, marginTop: 16, borderRadius: 24, backgroundColor: c.card, padding: 16, shadowColor: c.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Droplets size={18} color="#0ea5e9" />
-          <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: '#1A1C1E' }}>Air minum</Text>
+          <Droplets size={18} color={c.blue} />
+          <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: c.text }}>Air minum</Text>
         </View>
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#0ea5e9' }}>{glasses}/8 gelas</Text>
+        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.blue }}>{glasses}/8 gelas</Text>
       </View>
       <View style={{ flexDirection: 'row', gap: 6 }}>
         {Array.from({ length: 8 }).map((_, i) => (
@@ -73,13 +90,13 @@ function WaterTracker() {
               flex: 1,
               height: 36,
               borderRadius: 10,
-              backgroundColor: i < glasses ? '#0ea5e9' : '#F0EEE9',
+              backgroundColor: i < glasses ? c.blue : c.border,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: pressed ? 0.75 : 1,
             })}
           >
-            <Droplets size={14} color={i < glasses ? '#ffffff' : '#D0CEC9'} />
+            <Droplets size={14} color={i < glasses ? '#ffffff' : c.textFaint} />
           </Pressable>
         ))}
       </View>
@@ -87,19 +104,25 @@ function WaterTracker() {
   )
 }
 
-type Mission = { id: string; label: string; emoji: string; isDone: (logs: FoodLogDto[], glasses: number, goal: number) => boolean }
+type Mission = {
+  id: string
+  label: string
+  Icon: typeof ClipboardList
+  isDone: (logs: FoodLogDto[], glasses: number, goal: number) => boolean
+}
 
 const MISSIONS: Mission[] = [
-  { id: 'log3', label: 'Catat 3 makanan', emoji: '📝', isDone: (logs) => logs.length >= 3 },
-  { id: 'water8', label: 'Minum 8 gelas', emoji: '💧', isDone: (_, g) => g >= 8 },
-  { id: 'ontrack', label: 'Tetap di target', emoji: '🎯', isDone: (logs, _, goal) => { const tot = logs.reduce((s, l) => s + l.calories, 0); return goal > 0 && tot <= goal } },
-  { id: 'scan1', label: 'Scan 1 makanan', emoji: '📸', isDone: (logs) => logs.some((l) => l.source === 'vision') },
+  { id: 'log3', label: 'Catat 3 makanan', Icon: ClipboardList, isDone: (logs) => logs.length >= 3 },
+  { id: 'water8', label: 'Minum 8 gelas', Icon: Droplets, isDone: (_, g) => g >= 8 },
+  { id: 'ontrack', label: 'Tetap di target', Icon: Target, isDone: (logs, _, goal) => { const tot = logs.reduce((s, l) => s + l.calories, 0); return goal > 0 && tot <= goal } },
+  { id: 'scan1', label: 'Scan 1 makanan', Icon: Camera, isDone: (logs) => logs.some((l) => l.source === 'vision') },
 ]
 
 function DailyMissions({ logs, glasses, goal }: { logs: FoodLogDto[]; glasses: number; goal: number }) {
+  const c = useThemeColors()
   return (
     <View style={{ marginHorizontal: 16, marginTop: 16 }}>
-      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: '#1A1C1E', marginBottom: 10 }}>Misi hari ini</Text>
+      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: c.text, marginBottom: 10 }}>Misi hari ini</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         {MISSIONS.map((m) => {
           const done = m.isDone(logs, glasses, goal)
@@ -110,18 +133,20 @@ function DailyMissions({ logs, glasses, goal }: { logs: FoodLogDto[]; glasses: n
                 flex: 1,
                 minWidth: '45%',
                 borderRadius: 20,
-                backgroundColor: done ? '#FFF3EE' : '#FFFFFF',
+                backgroundColor: done ? c.orangeSoft : c.card,
                 borderWidth: done ? 1.5 : 1,
-                borderColor: done ? '#FF6B35' : '#F0EEE9',
+                borderColor: done ? c.orange : c.border,
                 padding: 14,
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 8,
               }}
             >
-              <Text style={{ fontSize: 20 }}>{m.emoji}</Text>
-              <Text style={{ flex: 1, fontFamily: 'Outfit_400Regular', fontSize: 13, color: done ? '#FF6B35' : '#1A1C1E', lineHeight: 18 }}>{m.label}</Text>
-              {done ? <CheckCircle2 size={16} color="#FF6B35" /> : null}
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: done ? c.orange : c.cardAlt, alignItems: 'center', justifyContent: 'center' }}>
+                <m.Icon size={14} color={done ? '#ffffff' : c.textSub} />
+              </View>
+              <Text style={{ flex: 1, fontFamily: 'Outfit_400Regular', fontSize: 13, color: done ? c.orange : c.text, lineHeight: 18 }}>{m.label}</Text>
+              {done ? <CheckCircle2 size={16} color={c.orange} /> : null}
             </View>
           )
         })}
@@ -131,6 +156,7 @@ function DailyMissions({ logs, glasses, goal }: { logs: FoodLogDto[]; glasses: n
 }
 
 export default function HomeTab() {
+  const c = useThemeColors()
   const { user } = useAuth()
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -189,7 +215,7 @@ export default function HomeTab() {
   useFocusEffect(maybeRoast)
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F7F4' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top']}>
       <ScreenFade>
         <ScrollView
           style={{ flex: 1 }}
@@ -198,10 +224,10 @@ export default function HomeTab() {
         >
           <Animated.View entering={FadeInDown.delay(0).duration(400)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 12 }}>
             <View>
-              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#8A8886' }}>
-                {getGreeting()}, {firstName} 👋
+              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub }}>
+                {getGreeting()}, {firstName}
               </Text>
-              <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 26, color: '#FF6B35', marginTop: 2 }}>
+              <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 26, color: c.orange, marginTop: 2 }}>
                 Cimeat
               </Text>
             </View>
@@ -211,9 +237,9 @@ export default function HomeTab() {
                 onPress={() => router.push('/profile')}
                 accessibilityRole="button"
                 accessibilityLabel="Profil"
-                style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: '#FFF3EE', borderWidth: 2, borderColor: '#FF6B35' }}
+                style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: c.orangeSoft, borderWidth: 2, borderColor: c.orange }}
               >
-                <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 17, color: '#FF6B35' }}>
+                <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 17, color: c.orange }}>
                   {initial}
                 </Text>
               </Pressable>
@@ -226,10 +252,10 @@ export default function HomeTab() {
               marginHorizontal: 16,
               marginTop: 16,
               borderRadius: 32,
-              backgroundColor: '#FFFFFF',
+              backgroundColor: c.card,
               padding: 24,
               alignItems: 'center',
-              shadowColor: '#FF6B35',
+              shadowColor: c.orange,
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: 0.14,
               shadowRadius: 24,
@@ -260,7 +286,7 @@ export default function HomeTab() {
                   justifyContent: 'center',
                   gap: 8,
                   borderRadius: 20,
-                  backgroundColor: '#FF6B35',
+                  backgroundColor: c.orange,
                   paddingVertical: 14,
                   opacity: pressed ? 0.85 : 1,
                 })}
@@ -277,15 +303,15 @@ export default function HomeTab() {
                   justifyContent: 'center',
                   gap: 8,
                   borderRadius: 20,
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: c.card,
                   paddingVertical: 14,
                   opacity: pressed ? 0.8 : 1,
                   borderWidth: 1.5,
-                  borderColor: '#FF6B3530',
+                  borderColor: c.dark ? '#FF6B3550' : '#FF6B3530',
                 })}
               >
-                <Mic size={18} color="#FF6B35" />
-                <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#FF6B35' }}>Catat Suara</Text>
+                <Mic size={18} color={c.orange} />
+                <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.orange }}>Catat Suara</Text>
               </Pressable>
             </View>
           </Animated.View>
@@ -305,7 +331,7 @@ export default function HomeTab() {
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(240).duration(400)} style={{ marginTop: 24, paddingHorizontal: 16 }}>
-            <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: '#1A1C1E', marginBottom: 12 }}>
+            <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: c.text, marginBottom: 12 }}>
               Makanan hari ini
             </Text>
 
@@ -316,26 +342,28 @@ export default function HomeTab() {
                 return (
                   <View
                     key={group.type}
-                    style={{ borderRadius: 24, backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 14, shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}
+                    style={{ borderRadius: 24, backgroundColor: c.card, paddingHorizontal: 16, paddingVertical: 14, shadowColor: c.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ fontSize: 18 }}>{group.emoji}</Text>
-                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: '#1A1C1E' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: `${group.accent}20`, alignItems: 'center', justifyContent: 'center' }}>
+                          <group.Icon size={16} color={group.accent} />
+                        </View>
+                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: c.text }}>
                           {group.label}
                         </Text>
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 13, color: '#8A8886' }}>
+                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 13, color: c.textSub }}>
                           {formatKcal(subtotal)}
                         </Text>
                         <Pressable
                           onPress={() => router.push(`/log?mealType=${group.type}`)}
                           accessibilityRole="button"
                           accessibilityLabel={`Tambah ${group.label}`}
-                          style={({ pressed }) => ({ width: 28, height: 28, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: '#FFF3EE', opacity: pressed ? 0.7 : 1 })}
+                          style={({ pressed }) => ({ width: 28, height: 28, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: c.orangeSoft, opacity: pressed ? 0.7 : 1 })}
                         >
-                          <Plus size={16} color="#FF6B35" strokeWidth={2.5} />
+                          <Plus size={16} color={c.orange} strokeWidth={2.5} />
                         </Pressable>
                       </View>
                     </View>
@@ -355,8 +383,8 @@ export default function HomeTab() {
                         onPress={() => router.push(`/log?mealType=${group.type}`)}
                         style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
                       >
-                        <UtensilsCrossed size={13} color="#D0CEC9" />
-                        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#D0CEC9' }}>
+                        <UtensilsCrossed size={13} color={c.textFaint} />
+                        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textFaint }}>
                           Belum ada, tap + buat tambah
                         </Text>
                       </Pressable>

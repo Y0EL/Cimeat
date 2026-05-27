@@ -12,6 +12,7 @@ import { useAuth } from '~/hooks/use-auth'
 import { useGoals } from '~/hooks/use-goals'
 import { useFlexTrend, type TrendPeriod } from '~/hooks/use-trend'
 import { MACRO_COLORS } from '~/lib/categories'
+import { useThemeColors } from '~/lib/theme'
 
 const PERIODS: { key: TrendPeriod; label: string }[] = [
   { key: 'daily', label: 'Harian' },
@@ -29,6 +30,7 @@ function rangeFor(period: TrendPeriod): { from: string; to: string } {
 }
 
 export default function ProgressTab() {
+  const c = useThemeColors()
   const { user } = useAuth()
   const { width } = useWindowDimensions()
   const [period, setPeriod] = useState<TrendPeriod>('daily')
@@ -78,18 +80,18 @@ export default function ProgressTab() {
   const firstName = user?.displayName?.split(' ')[0] ?? 'kamu'
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F7F4' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top']}>
       <ScreenFade>
         <Animated.View entering={FadeInDown.delay(0).duration(400)} style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-          <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#8A8886' }}>Statistik</Text>
-          <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 26, color: '#1A1C1E', marginTop: 2 }}>
+          <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub }}>Statistik</Text>
+          <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 26, color: c.text, marginTop: 2 }}>
             Progres lo
           </Text>
         </Animated.View>
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120, paddingTop: 16 }}>
           <Animated.View entering={FadeInDown.delay(40).duration(400)}>
-            <View style={{ flexDirection: 'row', gap: 4, borderRadius: 99, backgroundColor: '#FFFFFF', padding: 4 }}>
+            <View style={{ flexDirection: 'row', gap: 4, borderRadius: 99, backgroundColor: c.card, padding: 4 }}>
               {PERIODS.map((p) => {
                 const active = period === p.key
                 return (
@@ -98,7 +100,7 @@ export default function ProgressTab() {
                     onPress={() => setPeriod(p.key)}
                     style={{ flex: 1, alignItems: 'center', borderRadius: 99, paddingVertical: 10, backgroundColor: active ? '#FF6B35' : 'transparent' }}
                   >
-                    <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 13, color: active ? '#ffffff' : '#8A8886' }}>
+                    <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 13, color: active ? '#ffffff' : c.textSub }}>
                       {p.label}
                     </Text>
                   </Pressable>
@@ -110,7 +112,7 @@ export default function ProgressTab() {
           <Animated.View entering={FadeInDown.delay(80).duration(400)} style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
             <StatCard label="Rata-rata" value={formatKcal(avgCalories)} />
             <StatCard label="On-target" value={`${onTarget}x`} />
-            <StatCard label="Streak" value={`${streak}🔥`} />
+            <StatCard label="Streak" value={streak} />
           </Animated.View>
 
           <Animated.View
@@ -121,9 +123,9 @@ export default function ProgressTab() {
               backgroundColor: '#2A2D30',
               padding: 20,
               overflow: 'hidden',
-              shadowColor: '#1A1C1E',
+              shadowColor: '#000000',
               shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.18,
+              shadowOpacity: 0.25,
               shadowRadius: 24,
               elevation: 8,
             }}
@@ -155,26 +157,26 @@ export default function ProgressTab() {
 
           <Animated.View
             entering={FadeInDown.delay(160).duration(400)}
-            style={{ marginTop: 14, borderRadius: 24, backgroundColor: '#FFFFFF', padding: 16, shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}
+            style={{ marginTop: 14, borderRadius: 24, backgroundColor: c.card, padding: 16, shadowColor: c.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}
           >
-            <Text style={{ marginBottom: 12, fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#1A1C1E' }}>
+            <Text style={{ marginBottom: 12, fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.text }}>
               Tren kalori
             </Text>
             {data.length > 0 ? (
               <LineChart data={data} width={chartWidth} period={period} />
             ) : (
               <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                <TrendingUp size={32} color="#D0CEC9" />
-                <Text style={{ marginTop: 8, fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#8A8886' }}>Belum ada data</Text>
+                <TrendingUp size={32} color={c.textFaint} />
+                <Text style={{ marginTop: 8, fontFamily: 'Outfit_400Regular', fontSize: 14, color: c.textSub }}>Belum ada data</Text>
               </View>
             )}
           </Animated.View>
 
           <Animated.View
             entering={FadeInDown.delay(200).duration(400)}
-            style={{ marginTop: 14, borderRadius: 24, backgroundColor: '#FFFFFF', padding: 16, alignItems: 'center', shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}
+            style={{ marginTop: 14, borderRadius: 24, backgroundColor: c.card, padding: 16, alignItems: 'center', shadowColor: c.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}
           >
-            <Text style={{ marginBottom: 12, alignSelf: 'flex-start', fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#1A1C1E' }}>
+            <Text style={{ marginBottom: 12, alignSelf: 'flex-start', fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.text }}>
               Sebaran makro (kalori)
             </Text>
             <DonutChart slices={macroSlices} centerLabel="Periode" centerValue={`${data.length}`} />
@@ -201,7 +203,10 @@ export default function ProgressTab() {
                 <View style={{ flexDirection: 'row', gap: 20, marginTop: 16 }}>
                   <View>
                     <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>Streak</Text>
-                    <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 20, color: '#ffffff' }}>{streak}🔥</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 20, color: '#ffffff' }}>{streak}</Text>
+                      <Flame size={16} color="rgba(255,255,255,0.9)" />
+                    </View>
                   </View>
                   <View>
                     <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>Rata-rata</Text>
@@ -224,11 +229,11 @@ export default function ProgressTab() {
                 justifyContent: 'center',
                 gap: 8,
                 borderRadius: 20,
-                backgroundColor: '#FFFFFF',
+                backgroundColor: c.card,
                 paddingVertical: 14,
                 opacity: pressed ? 0.8 : 1,
                 borderWidth: 1.5,
-                borderColor: '#FF6B3530',
+                borderColor: c.dark ? '#FF6B3550' : '#FF6B3530',
               })}
             >
               <Share2 size={16} color="#FF6B35" />
@@ -241,22 +246,27 @@ export default function ProgressTab() {
   )
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({ label, value }: { label: string; value: string | number }) {
+  const c = useThemeColors()
   return (
-    <View style={{ flex: 1, borderRadius: 20, backgroundColor: '#FFFFFF', padding: 14, shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
-      <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#8A8886', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</Text>
-      <Text style={{ marginTop: 4, fontFamily: 'Outfit_900Black', fontSize: 18, color: '#FF6B35' }}>
-        {value}
-      </Text>
+    <View style={{ flex: 1, borderRadius: 20, backgroundColor: c.card, padding: 14, shadowColor: c.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+      <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: c.textSub, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+        <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 18, color: '#FF6B35' }}>
+          {value}
+        </Text>
+        {label === 'Streak' ? <Flame size={14} color="#FF6B35" /> : null}
+      </View>
     </View>
   )
 }
 
 function Legend({ color, label }: { color: string; label: string }) {
+  const c = useThemeColors()
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
-      <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>{label}</Text>
+      <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>{label}</Text>
     </View>
   )
 }

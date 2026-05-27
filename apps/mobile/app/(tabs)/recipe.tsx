@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Sparkles, UtensilsCrossed, X } from 'lucide-react-native'
+import { Banknote, Leaf, Plus, Salad, Scale, Sparkles, UtensilsCrossed, X } from 'lucide-react-native'
 import {
   ActivityIndicator,
   Alert,
@@ -23,14 +23,18 @@ import { useGenerateRecipe, useSavedRecipes } from '~/hooks/use-recipe-generate'
 import { useSubscription } from '~/hooks/use-subscription'
 import { apiErrorMessage, isQuotaExceeded } from '~/lib/api'
 import { track } from '~/lib/analytics'
+import { useThemeColors } from '~/lib/theme'
 
-const MODES: { key: EatingMode; label: string; emoji: string }[] = [
-  { key: 'hemat', label: 'Hemat', emoji: '💸' },
-  { key: 'sehat', label: 'Sehat', emoji: '🥗' },
-  { key: 'balanced', label: 'Seimbang', emoji: '⚖️' },
+type ModeItem = { key: EatingMode; label: string; Icon: typeof Banknote; color: string }
+
+const MODES: ModeItem[] = [
+  { key: 'hemat', label: 'Hemat', Icon: Banknote, color: '#f59e0b' },
+  { key: 'sehat', label: 'Sehat', Icon: Salad, color: '#22C55E' },
+  { key: 'balanced', label: 'Seimbang', Icon: Scale, color: '#818cf8' },
 ]
 
 export default function RecipeTab() {
+  const c = useThemeColors()
   const generate = useGenerateRecipe()
   const saved = useSavedRecipes()
   const create = useCreateFoodLog()
@@ -104,19 +108,22 @@ export default function RecipeTab() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F7F4' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top']}>
       <ScreenFade>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 4, paddingTop: 12 }}>
-            <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 26, color: '#1A1C1E' }}>
-              Resep dari bahan
-            </Text>
+            <View>
+              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub }}>Dapur digital</Text>
+              <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 26, color: c.text }}>
+                Resep dari bahan
+              </Text>
+            </View>
             <QuotaBadge feature="recipe" />
           </View>
 
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120, paddingTop: 12 }} keyboardShouldPersistTaps="handled">
-            <View style={{ borderRadius: 24, backgroundColor: '#FFFFFF', padding: 16, shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
-              <Text style={{ marginBottom: 8, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: '#8A8886' }}>
+            <View style={{ borderRadius: 24, backgroundColor: c.card, padding: 16, shadowColor: c.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
+              <Text style={{ marginBottom: 8, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: c.textSub }}>
                 Bahan yang ada
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -124,14 +131,14 @@ export default function RecipeTab() {
                   value={draft}
                   onChangeText={setDraft}
                   placeholder="Contoh: telur, bayam, nasi..."
-                  placeholderTextColor="#8A8886"
+                  placeholderTextColor={c.textSub}
                   onSubmitEditing={addIngredient}
                   returnKeyType="done"
-                  style={{ flex: 1, borderRadius: 14, backgroundColor: '#F8F7F4', paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}
+                  style={{ flex: 1, borderRadius: 14, backgroundColor: c.cardAlt, paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 15, color: c.text }}
                 />
                 <Pressable
                   onPress={addIngredient}
-                  style={({ pressed }) => ({ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: '#FF6B35', opacity: pressed ? 0.8 : 1 })}
+                  style={({ pressed }) => ({ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: c.orange, opacity: pressed ? 0.8 : 1 })}
                 >
                   <Plus size={20} color="#fff" />
                 </Pressable>
@@ -142,19 +149,19 @@ export default function RecipeTab() {
                     <Pressable
                       key={ing}
                       onPress={() => removeIngredient(ing)}
-                      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 99, backgroundColor: '#FFF3EE', paddingHorizontal: 12, paddingVertical: 6, opacity: pressed ? 0.7 : 1 })}
+                      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 99, backgroundColor: c.orangeSoft, paddingHorizontal: 12, paddingVertical: 6, opacity: pressed ? 0.7 : 1 })}
                     >
-                      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 12, color: '#FF6B35' }}>
+                      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 12, color: c.orange }}>
                         {ing}
                       </Text>
-                      <X size={12} color="#FF6B35" />
+                      <X size={12} color={c.orange} />
                     </Pressable>
                   ))}
                 </View>
               ) : null}
             </View>
 
-            <Text style={{ marginBottom: 8, marginTop: 16, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: '#8A8886' }}>
+            <Text style={{ marginBottom: 8, marginTop: 16, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: c.textSub }}>
               Mode
             </Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -168,13 +175,15 @@ export default function RecipeTab() {
                       flex: 1,
                       alignItems: 'center',
                       borderRadius: 20,
-                      backgroundColor: active ? '#FF6B35' : '#FFFFFF',
+                      backgroundColor: active ? m.color : c.card,
                       paddingVertical: 14,
                       opacity: pressed ? 0.85 : 1,
                     })}
                   >
-                    <Text style={{ fontSize: 20 }}>{m.emoji}</Text>
-                    <Text style={{ marginTop: 4, fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : '#8A8886' }}>
+                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: active ? 'rgba(255,255,255,0.2)' : c.cardAlt, alignItems: 'center', justifyContent: 'center' }}>
+                      <m.Icon size={18} color={active ? '#ffffff' : c.textSub} />
+                    </View>
+                    <Text style={{ marginTop: 6, fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : c.textSub }}>
                       {m.label}
                     </Text>
                   </Pressable>
@@ -184,28 +193,28 @@ export default function RecipeTab() {
 
             <View style={{ marginTop: 16, flexDirection: 'row', gap: 12 }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ marginBottom: 6, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: '#8A8886' }}>
+                <Text style={{ marginBottom: 6, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: c.textSub }}>
                   Budget (Rp)
                 </Text>
                 <TextInput
                   value={budget}
                   onChangeText={setBudget}
                   placeholder="opsional"
-                  placeholderTextColor="#8A8886"
+                  placeholderTextColor={c.textSub}
                   keyboardType="number-pad"
-                  style={{ borderRadius: 14, backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}
+                  style={{ borderRadius: 14, backgroundColor: c.card, paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 15, color: c.text }}
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ marginBottom: 6, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: '#8A8886' }}>
+                <Text style={{ marginBottom: 6, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: c.textSub }}>
                   Hindari
                 </Text>
                 <TextInput
                   value={avoid}
                   onChangeText={setAvoid}
                   placeholder="cabai, santan"
-                  placeholderTextColor="#8A8886"
-                  style={{ borderRadius: 14, backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}
+                  placeholderTextColor={c.textSub}
+                  style={{ borderRadius: 14, backgroundColor: c.card, paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 15, color: c.text }}
                 />
               </View>
             </View>
@@ -220,7 +229,7 @@ export default function RecipeTab() {
                 justifyContent: 'center',
                 gap: 8,
                 borderRadius: 99,
-                backgroundColor: '#FF6B35',
+                backgroundColor: c.orange,
                 paddingVertical: 14,
                 opacity: pressed || generate.isPending ? 0.7 : 1,
               })}
@@ -239,7 +248,7 @@ export default function RecipeTab() {
 
             {saved.data && saved.data.length > 0 ? (
               <View style={{ marginTop: 24 }}>
-                <Text style={{ marginBottom: 8, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: '#8A8886' }}>
+                <Text style={{ marginBottom: 8, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: c.textSub }}>
                   Resep tersimpan
                 </Text>
                 <View style={{ gap: 8 }}>
@@ -252,19 +261,19 @@ export default function RecipeTab() {
                         alignItems: 'center',
                         gap: 12,
                         borderRadius: 20,
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: c.card,
                         paddingHorizontal: 16,
                         paddingVertical: 12,
                         opacity: pressed ? 0.8 : 1,
                       })}
                     >
-                      <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#FFF3EE' }}>
-                        <UtensilsCrossed size={16} color="#FF6B35" />
+                      <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: c.orangeSoft }}>
+                        <UtensilsCrossed size={16} color={c.orange} />
                       </View>
-                      <Text style={{ flex: 1, fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#1A1C1E' }} numberOfLines={1}>
+                      <Text style={{ flex: 1, fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.text }} numberOfLines={1}>
                         {r.title}
                       </Text>
-                      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 13, color: '#FF6B35' }}>
+                      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 13, color: c.orange }}>
                         {formatKcal(r.nutrition_estimate.calories)}
                       </Text>
                     </Pressable>
@@ -280,10 +289,11 @@ export default function RecipeTab() {
 }
 
 function RecipeResult({ recipe, onLog }: { recipe: RecipeResponse; onLog: () => void }) {
+  const c = useThemeColors()
   const n = recipe.nutrition_estimate
   return (
-    <View style={{ marginTop: 20, borderRadius: 24, backgroundColor: '#FFFFFF', padding: 16, shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
-      <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 20, color: '#1A1C1E' }}>
+    <View style={{ marginTop: 20, borderRadius: 24, backgroundColor: c.card, padding: 16, shadowColor: c.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
+      <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 20, color: c.text }}>
         {recipe.title}
       </Text>
       <View style={{ marginTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -314,12 +324,12 @@ function RecipeResult({ recipe, onLog }: { recipe: RecipeResponse; onLog: () => 
           marginTop: 12,
           alignItems: 'center',
           borderRadius: 99,
-          backgroundColor: '#FFF3EE',
+          backgroundColor: c.orangeSoft,
           paddingVertical: 12,
           opacity: pressed ? 0.8 : 1,
         })}
       >
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#FF6B35' }}>
+        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.orange }}>
           Catat 1 porsi
         </Text>
       </Pressable>
@@ -328,9 +338,10 @@ function RecipeResult({ recipe, onLog }: { recipe: RecipeResponse; onLog: () => 
 }
 
 function Pill({ label }: { label: string }) {
+  const c = useThemeColors()
   return (
-    <View style={{ borderRadius: 99, backgroundColor: '#F8F7F4', paddingHorizontal: 12, paddingVertical: 4 }}>
-      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, color: '#8A8886' }}>
+    <View style={{ borderRadius: 99, backgroundColor: c.cardAlt, paddingHorizontal: 12, paddingVertical: 4 }}>
+      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, color: c.textSub }}>
         {label}
       </Text>
     </View>

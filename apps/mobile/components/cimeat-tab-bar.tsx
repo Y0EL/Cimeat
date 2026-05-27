@@ -16,6 +16,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useThemeColors } from '~/lib/theme'
 
 type TabKey = 'index' | 'recipe' | 'log' | 'nearby' | 'progress'
 
@@ -87,6 +88,7 @@ function TabButton({
   isFocused: boolean
   onPress: () => void
 }) {
+  const c = useThemeColors()
   const dotOpacity = useSharedValue(isFocused ? 1 : 0)
   const iconScale = useSharedValue(isFocused ? 1 : 0.9)
 
@@ -110,7 +112,7 @@ function TabButton({
         <Animated.View style={iconStyle}>
           <Icon
             size={isFocused ? 24 : 22}
-            color={isFocused ? '#FF6B35' : '#8A8886'}
+            color={isFocused ? '#FF6B35' : c.textSub}
             strokeWidth={isFocused ? 2.5 : 1.8}
           />
         </Animated.View>
@@ -126,6 +128,7 @@ function TabButton({
 }
 
 export function CimeatTabBar({ state, navigation }: BottomTabBarProps) {
+  const c = useThemeColors()
   const insets = useSafeAreaInsets()
   const slideY = useSharedValue(80)
   const opacity = useSharedValue(0)
@@ -160,10 +163,16 @@ export function CimeatTabBar({ state, navigation }: BottomTabBarProps) {
             alignItems: 'center',
             height: 68,
             borderRadius: 34,
-            backgroundColor: 'rgba(255,255,255,0.92)',
+            backgroundColor: c.dark ? 'rgba(26,28,31,0.96)' : 'rgba(255,255,255,0.92)',
             paddingHorizontal: 6,
           },
-          barShadow,
+          {
+            shadowColor: c.shadow,
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: c.dark ? 0.4 : 0.12,
+            shadowRadius: 32,
+            elevation: 16,
+          },
           containerStyle,
         ]}
       >
