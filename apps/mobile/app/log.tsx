@@ -9,7 +9,6 @@ import {
 } from 'lucide-react-native'
 import { useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   Image,
   Pressable,
@@ -20,10 +19,8 @@ import {
   View,
 } from 'react-native'
 import Animated, {
-  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withRepeat,
   withSequence,
   withSpring,
@@ -31,12 +28,15 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { CreateFoodLogInput, FoodAnalysis, FoodLogSource, MealType } from '@cimeat/types'
+import { CalorieRing } from '~/components/calorie-ring'
+import { Waveform } from '~/components/motion/waveform'
 import { useAudioRecording } from '~/hooks/use-audio-log'
 import { useCreateFoodLog } from '~/hooks/use-food-logs'
 import { useAnalyzeAudio, useAnalyzeImage } from '~/hooks/use-food-ai'
 import { useSubscription } from '~/hooks/use-subscription'
 import { apiErrorMessage, isQuotaExceeded } from '~/lib/api'
 import { track } from '~/lib/analytics'
+import { useRandomCalCycle } from '~/lib/motion'
 import { useThemeColors } from '~/lib/theme'
 
 type Phase = 'choice' | 'voice' | 'foto-analyzing' | 'voice-analyzing' | 'draft'
@@ -70,8 +70,6 @@ const ANALYZE_STEPS = [
   'Hampir selesai...',
 ]
 
-const WAVE_HEIGHTS = [18, 30, 44, 28, 52, 36, 48, 24, 56, 40, 60, 32, 48, 22, 44, 30, 52, 20, 38, 28, 44, 26, 36, 18, 32]
-
 function nowIso() {
   return new Date().toISOString()
 }
@@ -101,42 +99,6 @@ function buildDraft(r: FoodAnalysis, uri: string | null, transcript: string | nu
   }
 }
 
-function WaveBar({ active, delay, maxH }: { active: boolean; delay: number; maxH: number }) {
-  const h = useSharedValue(4)
-
-  useEffect(() => {
-    if (active) {
-      h.value = withDelay(
-        delay,
-        withRepeat(
-          withSequence(
-            withTiming(maxH, { duration: 300 + delay * 0.4 }),
-            withTiming(4, { duration: 300 + delay * 0.4 }),
-          ),
-          -1,
-          false,
-        ),
-      )
-    } else {
-      cancelAnimation(h)
-      h.value = withTiming(4, { duration: 200 })
-    }
-  }, [active, h, delay, maxH])
-
-  const style = useAnimatedStyle(() => ({ height: h.value }))
-  return <Animated.View style={[{ width: 2, borderRadius: 2, backgroundColor: '#818cf8' }, style]} />
-}
-
-function Waveform({ active }: { active: boolean }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 3, alignItems: 'flex-end', height: 64, justifyContent: 'center', paddingHorizontal: 12 }}>
-      {WAVE_HEIGHTS.map((maxH, i) => (
-        <WaveBar key={i} active={active} delay={i * 40} maxH={maxH} />
-      ))}
-    </View>
-  )
-}
-
 function MacroBox({ label, value, color }: { label: string; value: number; color: string }) {
   const c = useThemeColors()
   return (
@@ -161,7 +123,6 @@ export default function LogModal() {
   const [phase, setPhase] = useState<Phase>('choice')
   const [draft, setDraft] = useState<DraftItem | null>(null)
   const [analyzeStep, setAnalyzeStep] = useState(0)
-  const [previewUri, setPreviewUri] = useState<string | null>(null)
 
   const dismiss = () => router.back()
 
@@ -204,7 +165,6 @@ export default function LogModal() {
       if (!res) return
       const asset = res.assets?.[0]
       if (res.canceled || !asset?.base64) return
-      setPreviewUri(asset.uri)
       setPhase('foto-analyzing')
       track('log_food_photo')
       const r = await analyzeImage.mutateAsync({
@@ -314,7 +274,7 @@ export default function LogModal() {
         {(phase === 'foto-analyzing' || phase === 'voice-analyzing') && (
           <AnalyzingContent
             step={ANALYZE_STEPS[analyzeStep] ?? ANALYZE_STEPS[0]!}
-            previewUri={phase === 'foto-analyzing' ? previewUri : null}
+            kind={phase === 'foto-analyzing' ? 'foto' : 'voice'}
           />
         )}
 
@@ -492,12 +452,13 @@ function VoiceContent({
 
 function AnalyzingContent({
   step,
-  previewUri,
+  kind,
 }: {
   step: string
-  previewUri: string | null
+  kind: 'foto' | 'voice'
 }) {
   const c = useThemeColors()
+  const cal = useRandomCalCycle(true)
   const pulse = useSharedValue(0.4)
 
   useEffect(() => {
@@ -511,15 +472,14 @@ function AnalyzingContent({
   const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }))
 
   return (
-    <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16, alignItems: 'center', gap: 20 }}>
-      {previewUri ? (
-        <Image source={{ uri: previewUri }} style={{ width: '100%', height: 160, borderRadius: 24 }} resizeMode="cover" />
+    <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24, alignItems: 'center', gap: 20 }}>
+      {kind === 'foto' ? (
+        <CalorieRing analyzing displayNumber={cal} consumed={0} goal={0} size={200} />
       ) : (
-        <View style={{ paddingVertical: 16 }}>
-          <Waveform active />
+        <View style={{ paddingVertical: 24 }}>
+          <Waveform active mode="analyze" />
         </View>
       )}
-      <ActivityIndicator size="large" color={c.orange} />
       <Animated.Text style={[{ fontFamily: 'Outfit_700Bold', fontSize: 13, letterSpacing: 0.6, textTransform: 'uppercase', color: c.orange }, pulseStyle]}>
         {step}
       </Animated.Text>
@@ -655,7 +615,11 @@ function DraftContent({
           elevation: 8,
         })}
       >
-        {saving ? <ActivityIndicator color="#fff" /> : (
+        {saving ? (
+          <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 16, color: '#ffffff', letterSpacing: 0.3 }}>
+            Menyimpan...
+          </Text>
+        ) : (
           <>
             <Check size={20} color="#ffffff" />
             <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 16, color: '#ffffff', letterSpacing: 0.3 }}>
