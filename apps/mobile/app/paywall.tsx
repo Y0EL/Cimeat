@@ -11,7 +11,7 @@ import {
   Zap,
 } from 'lucide-react-native'
 import { useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native'
+import { Pressable, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useSubscription } from '~/hooks/use-subscription'
 import { useThemeColors } from '~/lib/theme'
@@ -135,7 +135,9 @@ export default function PaywallScreen() {
           })}
         >
           {loading ? (
-            <ActivityIndicator color="#ffffff" />
+            <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: '#ffffff' }}>
+              Membuka...
+            </Text>
           ) : (
             <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: '#ffffff' }}>
               Lihat harga & pilih paket
@@ -149,7 +151,9 @@ export default function PaywallScreen() {
           style={({ pressed }) => ({ marginTop: 14, alignItems: 'center', paddingVertical: 10, opacity: pressed || restoring ? 0.6 : 1 })}
         >
           {restoring ? (
-            <ActivityIndicator size="small" color={c.textSub} />
+            <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: c.textSub }}>
+              Memulihkan...
+            </Text>
           ) : (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <RotateCcw size={14} color={c.textSub} />

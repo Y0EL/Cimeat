@@ -19,6 +19,7 @@ import type {
   UpdateProfileInput,
 } from '@cimeat/types'
 import { useUpdateProfile } from '~/hooks/use-summary'
+import { useThemeColors } from '~/lib/theme'
 
 export const ONBOARDING_KEY = 'cimeat.onboarding.done'
 
@@ -67,6 +68,7 @@ const GOALS: { key: GoalType; label: string }[] = [
 ]
 
 export default function OnboardingScreen() {
+  const c = useThemeColors()
   const router = useRouter()
   const updateProfile = useUpdateProfile()
   const [step, setStep] = useState(0)
@@ -125,7 +127,7 @@ export default function OnboardingScreen() {
   const isGoalStep = step >= INTRO.length
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F7F4' }} edges={['top', 'bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top', 'bottom']}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 20 }}>
         {Array.from({ length: TOTAL }).map((_, i) => (
           <View
@@ -161,7 +163,7 @@ export default function OnboardingScreen() {
               onPress={() => animateTo(INTRO.length)}
               style={{ alignItems: 'center', paddingVertical: 10 }}
             >
-              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#8A8886' }}>Lewati</Text>
+              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: c.textSub }}>Lewati</Text>
             </Pressable>
           </View>
         </>
@@ -169,23 +171,23 @@ export default function OnboardingScreen() {
         <Animated.View style={[{ flex: 1 }, animStyle]}>
           <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24, paddingTop: 24 }} keyboardShouldPersistTaps="handled">
             <View style={{ marginBottom: 16, alignItems: 'center' }}>
-              <View style={{ width: 64, height: 64, alignItems: 'center', justifyContent: 'center', borderRadius: 32, backgroundColor: '#FFF3EE' }}>
+              <View style={{ width: 64, height: 64, alignItems: 'center', justifyContent: 'center', borderRadius: 32, backgroundColor: c.orangeSoft }}>
                 <Sparkles size={28} color="#FF6B35" />
               </View>
-              <Text style={{ marginTop: 16, textAlign: 'center', fontFamily: 'Outfit_900Black', fontSize: 24, color: '#1A1C1E' }}>
+              <Text style={{ marginTop: 16, textAlign: 'center', fontFamily: 'Outfit_900Black', fontSize: 24, color: c.text }}>
                 Atur target lo
               </Text>
-              <Text style={{ marginTop: 4, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#8A8886' }}>
+              <Text style={{ marginTop: 4, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 14, color: c.textSub }}>
                 Biar Cimeat hitung kalori yang pas buat lo.
               </Text>
             </View>
 
-            <View className="flex-row gap-3">
-              <View className="flex-1">
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
                 <Label>Tinggi (cm)</Label>
                 <Input value={height} onChange={setHeight} />
               </View>
-              <View className="flex-1">
+              <View style={{ flex: 1 }}>
                 <Label>Berat (kg)</Label>
                 <Input value={weight} onChange={setWeight} />
               </View>
@@ -232,19 +234,19 @@ export default function OnboardingScreen() {
                       borderRadius: 16,
                       borderWidth: 2,
                       borderColor: active ? '#FF6B35' : 'transparent',
-                      backgroundColor: active ? '#FFF3EE' : '#FFFFFF',
+                      backgroundColor: active ? c.orangeSoft : c.card,
                       paddingHorizontal: 12,
                       paddingVertical: 10,
                     }}
                   >
-                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: active ? '#FF6B35' : '#F0EEE9', alignItems: 'center', justifyContent: 'center' }}>
-                      <Sparkles size={14} color={active ? '#ffffff' : '#8A8886'} />
+                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: active ? '#FF6B35' : c.border, alignItems: 'center', justifyContent: 'center' }}>
+                      <Sparkles size={14} color={active ? '#ffffff' : c.textSub} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#1A1C1E' }}>
+                      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.text }}>
                         {t.label}
                       </Text>
-                      <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>
+                      <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>
                         {t.hint}
                       </Text>
                     </View>
@@ -263,7 +265,7 @@ export default function OnboardingScreen() {
               </Text>
             </Pressable>
             <Pressable onPress={() => void finish()} style={{ alignItems: 'center', paddingVertical: 10 }}>
-              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#8A8886' }}>Nanti aja</Text>
+              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: c.textSub }}>Nanti aja</Text>
             </Pressable>
           </ScrollView>
         </Animated.View>
@@ -273,6 +275,7 @@ export default function OnboardingScreen() {
 }
 
 function Intro({ index }: { index: number }) {
+  const c = useThemeColors()
   const item = INTRO[index] ?? INTRO[0] ?? { icon: Flame, title: '', body: '' }
   const Icon = item.icon
   return (
@@ -295,7 +298,7 @@ function Intro({ index }: { index: number }) {
           borderRadius: 50,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#FFF3EE',
+          backgroundColor: c.orangeSoft,
           shadowColor: '#FF6B35',
           shadowOffset: { width: 0, height: 8 },
           shadowOpacity: 0.2,
@@ -305,10 +308,10 @@ function Intro({ index }: { index: number }) {
       >
         <Icon size={46} color="#FF6B35" />
       </View>
-      <Text style={{ marginTop: 32, textAlign: 'center', fontFamily: 'Outfit_900Black', fontSize: 30, color: '#1A1C1E' }}>
+      <Text style={{ marginTop: 32, textAlign: 'center', fontFamily: 'Outfit_900Black', fontSize: 30, color: c.text }}>
         {item.title}
       </Text>
-      <Text style={{ marginTop: 16, maxWidth: 290, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 16, lineHeight: 26, color: '#8A8886' }}>
+      <Text style={{ marginTop: 16, maxWidth: 290, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 16, lineHeight: 26, color: c.textSub }}>
         {item.body}
       </Text>
     </>
@@ -316,22 +319,24 @@ function Intro({ index }: { index: number }) {
 }
 
 function Label({ children }: { children: React.ReactNode }) {
+  const c = useThemeColors()
   return (
-    <Text style={{ marginBottom: 6, marginTop: 12, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: '#8A8886' }}>
+    <Text style={{ marginBottom: 6, marginTop: 12, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: c.textSub }}>
       {children}
     </Text>
   )
 }
 
 function Input({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const c = useThemeColors()
   return (
     <TextInput
       value={value}
       onChangeText={onChange}
       placeholder="0"
-      placeholderTextColor="#8A8886"
+      placeholderTextColor={c.textSub}
       keyboardType="number-pad"
-      style={{ borderRadius: 14, backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 16, color: '#1A1C1E' }}
+      style={{ borderRadius: 14, backgroundColor: c.card, paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 16, color: c.text }}
     />
   )
 }
@@ -345,6 +350,7 @@ function Chips<T extends string>({
   value: T
   onChange: (v: T) => void
 }) {
+  const c = useThemeColors()
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
       {options.map((o) => {
@@ -353,9 +359,9 @@ function Chips<T extends string>({
           <Pressable
             key={o.key}
             onPress={() => onChange(o.key)}
-            style={{ borderRadius: 99, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: active ? '#FF6B35' : '#FFFFFF' }}
+            style={{ borderRadius: 99, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: active ? '#FF6B35' : c.card }}
           >
-            <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : '#1A1C1E' }}>
+            <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : c.text }}>
               {o.label}
             </Text>
           </Pressable>
