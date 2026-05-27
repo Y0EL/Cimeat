@@ -11,13 +11,15 @@ import {
   Monitor,
   Moon,
   Shield,
+  Sparkles,
   Sun,
   Target,
+  Trophy,
+  Zap,
 } from 'lucide-react-native'
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { CimitTone, CimitVoice, EatingMode } from '@cimeat/types'
-import { CimitMascot } from '~/components/cimit/cimit-mascot'
 import { PlanBadge } from '~/components/plan-badge'
 import { ScreenFade } from '~/components/screen-fade'
 import { useAuth } from '~/hooks/use-auth'
@@ -87,33 +89,33 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-cream dark:bg-zinc-950" edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F7F4' }} edges={['top']}>
       <ScreenFade>
-        <View className="flex-row items-center gap-2 px-4 pt-2">
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 8 }}>
           <Pressable
             onPress={() => router.back()}
-            className="h-9 w-9 items-center justify-center rounded-full bg-white dark:bg-zinc-900"
+            style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#FFFFFF' }}
           >
-            <ChevronLeft size={20} color="#71717a" />
+            <ChevronLeft size={20} color="#8A8886" />
           </Pressable>
-          <Text className="font-display text-xl font-bold text-zinc-900 dark:text-zinc-100">
+          <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 22, color: '#1A1C1E' }}>
             Profil
           </Text>
         </View>
 
-        <ScrollView className="flex-1" contentContainerClassName="pb-16" showsVerticalScrollIndicator={false}>
-          <View className="mx-4 mt-4 flex-row items-center gap-4 rounded-card bg-white p-4 dark:bg-zinc-900">
-            <View className="h-14 w-14 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-950">
-              <Text className="font-display text-xl font-bold text-primary-700 dark:text-primary-300">
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 64 }} showsVerticalScrollIndicator={false}>
+          <View style={{ marginHorizontal: 16, marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 16, borderRadius: 24, backgroundColor: '#FFFFFF', padding: 16, shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#FFF3EE', borderWidth: 3, borderColor: '#FF6B35', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 22, color: '#FF6B35' }}>
                 {initial}
               </Text>
             </View>
-            <View className="flex-1">
-              <Text className="font-sans text-base font-semibold text-zinc-900 dark:text-zinc-100">
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: '#1A1C1E' }}>
                 {user?.displayName ?? 'Tamu Cimeat'}
               </Text>
               {user?.email ? (
-                <Text className="mt-0.5 font-sans text-sm text-zinc-500 dark:text-zinc-400">
+                <Text style={{ marginTop: 2, fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#8A8886' }}>
                   {user.email}
                 </Text>
               ) : null}
@@ -121,136 +123,134 @@ export default function ProfileScreen() {
             <PlanBadge plan={plan} />
           </View>
 
-          <View className="mx-4 mt-5 overflow-hidden rounded-card bg-primary-600 p-5">
-            <View className="flex-row items-center gap-2">
-              <CimitMascot size={28} />
-              <Text className="font-display text-base font-bold text-white">
+          <View style={{ marginHorizontal: 16, marginTop: 16, overflow: 'hidden', borderRadius: 24, backgroundColor: '#FF6B35', padding: 20 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                <Sparkles size={16} color="#ffffff" />
+              </View>
+              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: '#ffffff' }}>
                 {plan === 'free' ? 'Upgrade Cimeat' : plan === 'pro' ? 'Cimeat Pro' : 'Cimeat MAX'}
               </Text>
             </View>
-            <Text className="mt-1 font-sans text-sm leading-5 text-primary-100">
+            <Text style={{ marginTop: 4, fontFamily: 'Outfit_400Regular', fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.85)' }}>
               {plan === 'free'
                 ? 'Buka kuota lebih gede buat foto, suara, resep & rekomendasi.'
                 : 'Makasih udah dukung Cimeat! Kelola langganan lo di Customer Center.'}
             </Text>
-            <View className="mt-4 flex-row gap-2">
+            <View style={{ marginTop: 16, flexDirection: 'row', gap: 8 }}>
               <Pressable
                 onPress={() => void openPaywall()}
-                className="flex-1 items-center rounded-full bg-white py-3 active:opacity-90"
+                style={({ pressed }) => ({ flex: 1, alignItems: 'center', borderRadius: 99, backgroundColor: '#FFFFFF', paddingVertical: 12, opacity: pressed ? 0.85 : 1 })}
               >
-                <Text className="font-sans text-sm font-semibold text-primary-700">
+                <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#FF6B35' }}>
                   {plan === 'free' ? 'Lihat paket' : 'Ganti paket'}
                 </Text>
               </Pressable>
               {plan !== 'free' ? (
                 <Pressable
                   onPress={() => void openCustomerCenter()}
-                  className="flex-1 items-center rounded-full bg-primary-700 py-3 active:opacity-90"
+                  style={({ pressed }) => ({ flex: 1, alignItems: 'center', borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.2)', paddingVertical: 12, opacity: pressed ? 0.85 : 1 })}
                 >
-                  <Text className="font-sans text-sm font-semibold text-white">Kelola</Text>
+                  <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#ffffff' }}>Kelola</Text>
                 </Pressable>
               ) : null}
             </View>
           </View>
 
           <Section title="Kepribadian Cimit">
-            <View className="px-4 py-3.5">
-              <Text className="mb-2 font-sans text-xs text-zinc-500 dark:text-zinc-400">
+            <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
+              <Text style={{ marginBottom: 8, fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>
                 Mau Cimit selembut apa?
               </Text>
-              <View className="gap-2">
+              <View style={{ gap: 8 }}>
                 {TONES.map((t) => {
                   const active = tone === t.key
                   return (
                     <Pressable
                       key={t.key}
                       onPress={() => setTone(t.key)}
-                      className={
-                        active
-                          ? 'flex-row items-center gap-3 rounded-2xl border-2 border-primary-500 bg-primary-50 px-3 py-2.5 dark:bg-primary-950'
-                          : 'flex-row items-center gap-3 rounded-2xl border-2 border-transparent bg-zinc-50 px-3 py-2.5 dark:bg-zinc-800'
-                      }
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        borderRadius: 16,
+                        borderWidth: 2,
+                        borderColor: active ? '#FF6B35' : 'transparent',
+                        backgroundColor: active ? '#FFF3EE' : '#F8F7F4',
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                      }}
                     >
-                      <CimitMascot size={32} tone={t.key} />
-                      <View className="flex-1">
-                        <Text className="font-sans text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: active ? '#FF6B35' : '#E8E6E0', alignItems: 'center', justifyContent: 'center' }}>
+                        <Sparkles size={14} color={active ? '#ffffff' : '#8A8886'} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#1A1C1E' }}>
                           {t.label}
                         </Text>
-                        <Text className="font-sans text-xs text-zinc-500 dark:text-zinc-400">
+                        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>
                           {t.hint}
                         </Text>
                       </View>
-                      {active ? (
-                        <View className="h-4 w-4 rounded-full bg-primary-600" />
-                      ) : (
-                        <View className="h-4 w-4 rounded-full border border-zinc-300 dark:border-zinc-600" />
-                      )}
+                      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: active ? '#FF6B35' : 'transparent', borderWidth: active ? 0 : 1.5, borderColor: '#D0CEC9' }} />
                     </Pressable>
                   )
                 })}
               </View>
             </View>
             <Divider />
-            <View className="px-4 py-3.5">
-              <Text className="mb-2 font-sans text-sm text-zinc-900 dark:text-zinc-100">
+            <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
+              <Text style={{ marginBottom: 8, fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}>
                 Suara Cimit
               </Text>
-              <View className="gap-2">
+              <View style={{ gap: 8 }}>
                 {VOICES.map((v) => {
                   const active = voice === v.key
                   return (
                     <Pressable
                       key={v.key}
                       onPress={() => setVoice(v.key)}
-                      className={
-                        active
-                          ? 'flex-row items-center gap-3 rounded-2xl border-2 border-primary-500 bg-primary-50 px-3 py-2.5 dark:bg-primary-950'
-                          : 'flex-row items-center gap-3 rounded-2xl border-2 border-transparent bg-zinc-50 px-3 py-2.5 dark:bg-zinc-800'
-                      }
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        borderRadius: 16,
+                        borderWidth: 2,
+                        borderColor: active ? '#FF6B35' : 'transparent',
+                        backgroundColor: active ? '#FFF3EE' : '#F8F7F4',
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                      }}
                     >
-                      <View className="flex-1">
-                        <Text className="font-sans text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#1A1C1E' }}>
                           {v.label}
                         </Text>
-                        <Text className="font-sans text-xs text-zinc-500 dark:text-zinc-400">
+                        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>
                           {v.hint}
                         </Text>
                       </View>
-                      {active ? (
-                        <View className="h-4 w-4 rounded-full bg-primary-600" />
-                      ) : (
-                        <View className="h-4 w-4 rounded-full border border-zinc-300 dark:border-zinc-600" />
-                      )}
+                      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: active ? '#FF6B35' : 'transparent', borderWidth: active ? 0 : 1.5, borderColor: '#D0CEC9' }} />
                     </Pressable>
                   )
                 })}
               </View>
             </View>
             <Divider />
-            <View className="px-4 py-3.5">
-              <Text className="mb-2 font-sans text-sm text-zinc-900 dark:text-zinc-100">
+            <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
+              <Text style={{ marginBottom: 8, fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}>
                 Mode makan default
               </Text>
-              <View className="flex-row gap-1 rounded-full bg-zinc-100 p-1 dark:bg-zinc-800">
+              <View style={{ flexDirection: 'row', gap: 4, borderRadius: 99, backgroundColor: '#F8F7F4', padding: 4 }}>
                 {MODES.map((m) => {
                   const active = defaultMode === m.key
                   return (
                     <Pressable
                       key={m.key}
                       onPress={() => setMode(m.key)}
-                      className={
-                        active
-                          ? 'flex-1 items-center rounded-full bg-primary-600 py-2'
-                          : 'flex-1 items-center rounded-full py-2 active:opacity-60'
-                      }
+                      style={{ flex: 1, alignItems: 'center', borderRadius: 99, paddingVertical: 8, backgroundColor: active ? '#FF6B35' : 'transparent' }}
                     >
-                      <Text
-                        className={
-                          active
-                            ? 'font-sans text-xs font-semibold text-white'
-                            : 'font-sans text-xs font-medium text-zinc-600 dark:text-zinc-300'
-                        }
-                      >
+                      <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : '#8A8886' }}>
                         {m.label}
                       </Text>
                     </Pressable>
@@ -299,24 +299,24 @@ export default function ProfileScreen() {
             <Row icon={<Shield size={18} color="#71717a" />} label="Kebijakan privasi" />
           </Section>
 
-          <View className="mx-4 mt-5 rounded-card bg-primary-50 px-4 py-3 dark:bg-zinc-900">
-            <Text className="font-sans text-xs leading-4 text-zinc-500 dark:text-zinc-400">
+          <View style={{ marginHorizontal: 16, marginTop: 20, borderRadius: 20, backgroundColor: '#FFF3EE', paddingHorizontal: 16, paddingVertical: 12 }}>
+            <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, lineHeight: 18, color: '#8A8886' }}>
               Cimeat & Cimit kasih estimasi buat bantu lo aware sama makanan. Ini bukan saran
               medis. Konsultasi ke ahli gizi/dokter buat kebutuhan kesehatan spesifik ya.
             </Text>
           </View>
 
-          <View className="mx-4 mt-5">
+          <View style={{ marginHorizontal: 16, marginTop: 20 }}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Keluar"
               onPress={() => signOutUser().catch(() => {})}
-              className="flex-row items-center justify-center gap-2 rounded-card bg-white py-3.5 active:opacity-80 dark:bg-zinc-900"
+              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 24, backgroundColor: '#FFFFFF', paddingVertical: 14, opacity: pressed ? 0.75 : 1 })}
             >
-              <LogOut size={16} color="#dc2626" />
-              <Text className="font-sans text-sm font-semibold text-danger">Keluar</Text>
+              <LogOut size={16} color="#ef4444" />
+              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#ef4444' }}>Keluar</Text>
             </Pressable>
-            <Text className="mt-5 text-center font-sans text-xs text-zinc-400">Cimeat v0.2.0</Text>
+            <Text style={{ marginTop: 20, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#D0CEC9' }}>Cimeat v0.2.0</Text>
           </View>
         </ScrollView>
       </ScreenFade>
@@ -327,14 +327,14 @@ export default function ProfileScreen() {
 function LangSelector() {
   const { lang, setLang } = useLang()
   return (
-    <View className="px-4 py-3.5">
-      <View className="flex-row items-center gap-3">
-        <View className="h-9 w-9 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-          <Globe size={18} color="#71717a" />
+    <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#F8F7F4' }}>
+          <Globe size={18} color="#8A8886" />
         </View>
-        <Text className="font-sans text-base text-zinc-900 dark:text-zinc-100">Bahasa</Text>
+        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}>Bahasa</Text>
       </View>
-      <View className="mt-3 flex-row gap-1 rounded-full bg-zinc-100 p-1 dark:bg-zinc-800">
+      <View style={{ marginTop: 12, flexDirection: 'row', gap: 4, borderRadius: 99, backgroundColor: '#F8F7F4', padding: 4 }}>
         {LANG_OPTIONS.map((opt) => {
           const active = lang === opt.key
           return (
@@ -343,19 +343,9 @@ function LangSelector() {
               onPress={() => setLang(opt.key)}
               accessibilityRole="button"
               accessibilityLabel={opt.label}
-              className={
-                active
-                  ? 'flex-1 items-center rounded-full bg-primary-600 py-2'
-                  : 'flex-1 items-center rounded-full py-2 active:opacity-60'
-              }
+              style={{ flex: 1, alignItems: 'center', borderRadius: 99, paddingVertical: 8, backgroundColor: active ? '#FF6B35' : 'transparent' }}
             >
-              <Text
-                className={
-                  active
-                    ? 'font-sans text-xs font-semibold text-white'
-                    : 'font-sans text-xs font-medium text-zinc-600 dark:text-zinc-300'
-                }
-              >
+              <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : '#8A8886' }}>
                 {opt.label}
               </Text>
             </Pressable>
@@ -375,14 +365,14 @@ const themeOptions: { key: ThemePref; label: string; icon: typeof Sun }[] = [
 function ThemeSelector() {
   const { pref, setPref } = useTheme()
   return (
-    <View className="px-4 py-3.5">
-      <View className="flex-row items-center gap-3">
-        <View className="h-9 w-9 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-          <Moon size={18} color="#71717a" />
+    <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#F8F7F4' }}>
+          <Moon size={18} color="#8A8886" />
         </View>
-        <Text className="font-sans text-base text-zinc-900 dark:text-zinc-100">Tema</Text>
+        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}>Tema</Text>
       </View>
-      <View className="mt-3 flex-row gap-1 rounded-full bg-zinc-100 p-1 dark:bg-zinc-800">
+      <View style={{ marginTop: 12, flexDirection: 'row', gap: 4, borderRadius: 99, backgroundColor: '#F8F7F4', padding: 4 }}>
         {themeOptions.map((opt) => {
           const active = pref === opt.key
           const Icon = opt.icon
@@ -392,20 +382,10 @@ function ThemeSelector() {
               accessibilityRole="button"
               accessibilityLabel={`Tema ${opt.label}`}
               onPress={() => setPref(opt.key)}
-              className={
-                active
-                  ? 'flex-1 flex-row items-center justify-center gap-1.5 rounded-full bg-primary-600 py-2'
-                  : 'flex-1 flex-row items-center justify-center gap-1.5 rounded-full py-2 active:opacity-60'
-              }
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 99, paddingVertical: 8, backgroundColor: active ? '#FF6B35' : 'transparent' }}
             >
-              <Icon size={15} color={active ? '#ffffff' : '#71717a'} />
-              <Text
-                className={
-                  active
-                    ? 'font-sans text-xs font-semibold text-white'
-                    : 'font-sans text-xs font-medium text-zinc-600 dark:text-zinc-300'
-                }
-              >
+              <Icon size={14} color={active ? '#ffffff' : '#8A8886'} />
+              <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : '#8A8886' }}>
                 {opt.label}
               </Text>
             </Pressable>
@@ -418,17 +398,19 @@ function ThemeSelector() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View className="mx-4 mt-6">
-      <Text className="font-sans text-xs font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+    <View style={{ marginHorizontal: 16, marginTop: 24 }}>
+      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: '#8A8886' }}>
         {title}
       </Text>
-      <View className="mt-3 overflow-hidden rounded-card bg-white dark:bg-zinc-900">{children}</View>
+      <View style={{ marginTop: 10, overflow: 'hidden', borderRadius: 24, backgroundColor: '#FFFFFF', shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+        {children}
+      </View>
     </View>
   )
 }
 
 function Divider() {
-  return <View className="ml-16 h-px bg-zinc-100 dark:bg-zinc-800" />
+  return <View style={{ marginLeft: 64, height: 1, backgroundColor: '#F0EEE9' }} />
 }
 
 function Row({
@@ -445,18 +427,18 @@ function Row({
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center gap-3 px-4 py-3.5 active:bg-zinc-50 dark:active:bg-zinc-800"
+      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14, backgroundColor: pressed ? '#FFF3EE' : 'transparent' })}
     >
-      <View className="h-9 w-9 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+      <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#F8F7F4' }}>
         {icon}
       </View>
-      <View className="flex-1">
-        <Text className="font-sans text-base text-zinc-900 dark:text-zinc-100">{label}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}>{label}</Text>
         {hint ? (
-          <Text className="mt-0.5 font-sans text-xs text-zinc-500 dark:text-zinc-400">{hint}</Text>
+          <Text style={{ marginTop: 2, fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>{hint}</Text>
         ) : null}
       </View>
-      <ChevronRight size={16} color="#a1a1aa" />
+      <ChevronRight size={16} color="#D0CEC9" />
     </Pressable>
   )
 }

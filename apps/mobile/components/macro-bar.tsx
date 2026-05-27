@@ -14,20 +14,17 @@ export function MacroBar({ macro, value, goal }: { macro: MacroKey; value: numbe
   const pct = goal > 0 ? Math.min((value / goal) * 100, 100) : 0
 
   return (
-    <View className="flex-1">
-      <View className="flex-row items-baseline justify-between">
-        <Text className="font-sans text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+    <View style={{ flex: 1 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
+        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, color: '#1A1C1E' }}>
           {LABELS[macro]}
         </Text>
-        <Text
-          className="font-sans text-[11px] text-zinc-400"
-          style={{ fontVariant: ['tabular-nums'] }}
-        >
+        <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 10, color: '#8A8886', fontVariant: ['tabular-nums'] }}>
           {Math.round(value)}/{Math.round(goal)}g
         </Text>
       </View>
-      <View className="mt-1.5 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-        <View style={{ width: `${pct}%`, height: '100%', backgroundColor: color }} />
+      <View style={{ marginTop: 6, height: 6, overflow: 'hidden', borderRadius: 3, backgroundColor: '#F0EEE9' }}>
+        <View style={{ width: `${pct}%`, height: '100%', backgroundColor: color, borderRadius: 3 }} />
       </View>
     </View>
   )
@@ -49,7 +46,7 @@ export function MacroBarRow({
   goalFat: number
 }) {
   return (
-    <View className="flex-row gap-4">
+    <View style={{ flexDirection: 'row', gap: 16 }}>
       <MacroBar macro="protein" value={protein} goal={goalProtein} />
       <MacroBar macro="carb" value={carb} goal={goalCarb} />
       <MacroBar macro="fat" value={fat} goal={goalFat} />

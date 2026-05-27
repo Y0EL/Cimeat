@@ -1,6 +1,12 @@
 import '~/lib/reanimated-init'
 import '../global.css'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import {
+  Outfit_400Regular,
+  Outfit_700Bold,
+  Outfit_900Black,
+  useFonts,
+} from '@expo-google-fonts/outfit'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
@@ -69,8 +75,8 @@ function AuthGate() {
 
   if (loading || !onboardingReady) {
     return (
-      <View className="flex-1 items-center justify-center bg-cream dark:bg-zinc-950">
-        <ActivityIndicator size="large" color="#ea580c" />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8F7F4' }}>
+        <ActivityIndicator size="large" color="#FF6B35" />
       </View>
     )
   }
@@ -94,11 +100,20 @@ function AuthGate() {
 
 export default function RootLayout() {
   const { colorScheme: scheme } = useColorScheme()
+  const [fontsLoaded] = useFonts({ Outfit_400Regular, Outfit_700Bold, Outfit_900Black })
 
   useEffect(() => {
     getFirebaseAuth()
     configurePurchases(REVENUECAT_KEY)
   }, [])
+
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8F7F4' }}>
+        <ActivityIndicator size="large" color="#FF6B35" />
+      </View>
+    )
+  }
 
   return (
     <LangProvider>

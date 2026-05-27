@@ -18,9 +18,7 @@ import type {
   GoalType,
   UpdateProfileInput,
 } from '@cimeat/types'
-import { CimitMascot } from '~/components/cimit/cimit-mascot'
 import { useUpdateProfile } from '~/hooks/use-summary'
-import { useAccentColor } from '~/lib/use-accent-color'
 
 export const ONBOARDING_KEY = 'cimeat.onboarding.done'
 
@@ -70,7 +68,6 @@ const GOALS: { key: GoalType; label: string }[] = [
 
 export default function OnboardingScreen() {
   const router = useRouter()
-  const accent = useAccentColor()
   const updateProfile = useUpdateProfile()
   const [step, setStep] = useState(0)
   const TOTAL = INTRO.length + 1
@@ -128,8 +125,8 @@ export default function OnboardingScreen() {
   const isGoalStep = step >= INTRO.length
 
   return (
-    <SafeAreaView className="flex-1 bg-cream dark:bg-zinc-950" edges={['top', 'bottom']}>
-      <View className="flex-row items-center justify-center gap-2 pt-5">
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F7F4' }} edges={['top', 'bottom']}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 20 }}>
         {Array.from({ length: TOTAL }).map((_, i) => (
           <View
             key={i}
@@ -137,7 +134,7 @@ export default function OnboardingScreen() {
               height: 5,
               width: i === step ? 22 : 6,
               borderRadius: 99,
-              backgroundColor: i <= step ? accent : '#fed7aa',
+              backgroundColor: i <= step ? '#FF6B35' : '#FF6B3530',
             }}
           />
         ))}
@@ -151,34 +148,34 @@ export default function OnboardingScreen() {
               animStyle,
             ]}
           >
-            <Intro index={step} accent={accent} />
+            <Intro index={step} />
           </Animated.View>
-          <View className="gap-2 px-6 pb-6">
+          <View style={{ gap: 8, paddingHorizontal: 24, paddingBottom: 24 }}>
             <Pressable
               onPress={() => animateTo(step + 1)}
-              className="items-center rounded-full bg-primary-600 py-4 active:opacity-80"
+              style={({ pressed }) => ({ alignItems: 'center', borderRadius: 99, backgroundColor: '#FF6B35', paddingVertical: 16, opacity: pressed ? 0.85 : 1 })}
             >
-              <Text className="font-sans text-base font-semibold text-white">Lanjut</Text>
+              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: '#ffffff' }}>Lanjut</Text>
             </Pressable>
             <Pressable
               onPress={() => animateTo(INTRO.length)}
-              className="items-center py-2.5 active:opacity-60"
+              style={{ alignItems: 'center', paddingVertical: 10 }}
             >
-              <Text className="font-sans text-sm text-zinc-400">Lewati</Text>
+              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#8A8886' }}>Lewati</Text>
             </Pressable>
           </View>
         </>
       ) : (
         <Animated.View style={[{ flex: 1 }, animStyle]}>
-          <ScrollView contentContainerClassName="px-6 pb-6 pt-6" keyboardShouldPersistTaps="handled">
-            <View className="mb-4 items-center">
-              <View className="h-16 w-16 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-950">
-                <Sparkles size={28} color={accent} />
+          <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24, paddingTop: 24 }} keyboardShouldPersistTaps="handled">
+            <View style={{ marginBottom: 16, alignItems: 'center' }}>
+              <View style={{ width: 64, height: 64, alignItems: 'center', justifyContent: 'center', borderRadius: 32, backgroundColor: '#FFF3EE' }}>
+                <Sparkles size={28} color="#FF6B35" />
               </View>
-              <Text className="mt-4 text-center font-display text-2xl font-extrabold text-zinc-900 dark:text-zinc-100">
+              <Text style={{ marginTop: 16, textAlign: 'center', fontFamily: 'Outfit_900Black', fontSize: 24, color: '#1A1C1E' }}>
                 Atur target lo
               </Text>
-              <Text className="mt-1 text-center font-sans text-sm text-zinc-500 dark:text-zinc-400">
+              <Text style={{ marginTop: 4, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#8A8886' }}>
                 Biar Cimeat hitung kalori yang pas buat lo.
               </Text>
             </View>
@@ -221,25 +218,33 @@ export default function OnboardingScreen() {
             />
 
             <Label>Gaya Cimit</Label>
-            <View className="gap-2">
+            <View style={{ gap: 8 }}>
               {TONES.map((t) => {
                 const active = cimitTone === t.key
                 return (
                   <Pressable
                     key={t.key}
                     onPress={() => setCimitTone(t.key)}
-                    className={
-                      active
-                        ? 'flex-row items-center gap-3 rounded-2xl border-2 border-primary-500 bg-primary-50 px-3 py-2.5 dark:bg-primary-950'
-                        : 'flex-row items-center gap-3 rounded-2xl border-2 border-transparent bg-white px-3 py-2.5 dark:bg-zinc-900'
-                    }
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      borderRadius: 16,
+                      borderWidth: 2,
+                      borderColor: active ? '#FF6B35' : 'transparent',
+                      backgroundColor: active ? '#FFF3EE' : '#FFFFFF',
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                    }}
                   >
-                    <CimitMascot size={32} tone={t.key} />
-                    <View className="flex-1">
-                      <Text className="font-sans text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: active ? '#FF6B35' : '#F0EEE9', alignItems: 'center', justifyContent: 'center' }}>
+                      <Sparkles size={14} color={active ? '#ffffff' : '#8A8886'} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#1A1C1E' }}>
                         {t.label}
                       </Text>
-                      <Text className="font-sans text-xs text-zinc-500 dark:text-zinc-400">
+                      <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>
                         {t.hint}
                       </Text>
                     </View>
@@ -251,14 +256,14 @@ export default function OnboardingScreen() {
             <Pressable
               onPress={saveAndFinish}
               disabled={updateProfile.isPending}
-              className="mt-6 items-center rounded-full bg-primary-600 py-4 active:opacity-80 disabled:opacity-50"
+              style={({ pressed }) => ({ marginTop: 24, alignItems: 'center', borderRadius: 99, backgroundColor: '#FF6B35', paddingVertical: 16, opacity: pressed || updateProfile.isPending ? 0.7 : 1 })}
             >
-              <Text className="font-sans text-base font-semibold text-white">
+              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: '#ffffff' }}>
                 {updateProfile.isPending ? 'Menghitung...' : 'Mulai pakai Cimeat'}
               </Text>
             </Pressable>
-            <Pressable onPress={() => void finish()} className="items-center py-2.5 active:opacity-60">
-              <Text className="font-sans text-sm text-zinc-400">Nanti aja</Text>
+            <Pressable onPress={() => void finish()} style={{ alignItems: 'center', paddingVertical: 10 }}>
+              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#8A8886' }}>Nanti aja</Text>
             </Pressable>
           </ScrollView>
         </Animated.View>
@@ -267,11 +272,22 @@ export default function OnboardingScreen() {
   )
 }
 
-function Intro({ index, accent }: { index: number; accent: string }) {
+function Intro({ index }: { index: number }) {
   const item = INTRO[index] ?? INTRO[0] ?? { icon: Flame, title: '', body: '' }
   const Icon = item.icon
   return (
     <>
+      <View
+        style={{
+          position: 'absolute',
+          top: -80,
+          width: 240,
+          height: 240,
+          borderRadius: 120,
+          backgroundColor: '#FF6B35',
+          opacity: 0.08,
+        }}
+      />
       <View
         style={{
           height: 100,
@@ -279,15 +295,20 @@ function Intro({ index, accent }: { index: number; accent: string }) {
           borderRadius: 50,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: `${accent}18`,
+          backgroundColor: '#FFF3EE',
+          shadowColor: '#FF6B35',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.2,
+          shadowRadius: 20,
+          elevation: 6,
         }}
       >
-        <Icon size={46} color={accent} />
+        <Icon size={46} color="#FF6B35" />
       </View>
-      <Text className="mt-8 text-center font-display text-3xl font-extrabold text-zinc-900 dark:text-zinc-100">
+      <Text style={{ marginTop: 32, textAlign: 'center', fontFamily: 'Outfit_900Black', fontSize: 30, color: '#1A1C1E' }}>
         {item.title}
       </Text>
-      <Text className="mt-4 max-w-[290px] text-center font-sans text-base leading-7 text-zinc-500 dark:text-zinc-400">
+      <Text style={{ marginTop: 16, maxWidth: 290, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 16, lineHeight: 26, color: '#8A8886' }}>
         {item.body}
       </Text>
     </>
@@ -296,7 +317,7 @@ function Intro({ index, accent }: { index: number; accent: string }) {
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <Text className="mb-1.5 mt-3 font-sans text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+    <Text style={{ marginBottom: 6, marginTop: 12, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: '#8A8886' }}>
       {children}
     </Text>
   )
@@ -308,9 +329,9 @@ function Input({ value, onChange }: { value: string; onChange: (v: string) => vo
       value={value}
       onChangeText={onChange}
       placeholder="0"
-      placeholderTextColor="#a1a1aa"
+      placeholderTextColor="#8A8886"
       keyboardType="number-pad"
-      className="rounded-input bg-white px-4 py-3 font-sans text-base text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100"
+      style={{ borderRadius: 14, backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 16, color: '#1A1C1E' }}
     />
   )
 }
@@ -325,26 +346,16 @@ function Chips<T extends string>({
   onChange: (v: T) => void
 }) {
   return (
-    <View className="flex-row flex-wrap gap-2">
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
       {options.map((o) => {
         const active = value === o.key
         return (
           <Pressable
             key={o.key}
             onPress={() => onChange(o.key)}
-            className={
-              active
-                ? 'rounded-full bg-primary-600 px-4 py-2'
-                : 'rounded-full bg-white px-4 py-2 dark:bg-zinc-900'
-            }
+            style={{ borderRadius: 99, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: active ? '#FF6B35' : '#FFFFFF' }}
           >
-            <Text
-              className={
-                active
-                  ? 'font-sans text-xs font-semibold text-white'
-                  : 'font-sans text-xs font-medium text-zinc-600 dark:text-zinc-300'
-              }
-            >
+            <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : '#1A1C1E' }}>
               {o.label}
             </Text>
           </Pressable>

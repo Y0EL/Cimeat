@@ -7,9 +7,15 @@ import {
   TrendingUp,
   type LucideIcon,
 } from 'lucide-react-native'
+import { useEffect } from 'react'
 import { Pressable, View } from 'react-native'
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useAccentColor } from '~/lib/use-accent-color'
 
 type TabKey = 'index' | 'recipe' | 'log' | 'nearby' | 'progress'
 
@@ -22,34 +28,144 @@ const tabs: Record<TabKey, { icon: LucideIcon; label: string }> = {
 }
 
 const barShadow = {
-  shadowColor: '#09090b',
+  shadowColor: '#1A1C1E',
   shadowOffset: { width: 0, height: 8 },
   shadowOpacity: 0.12,
-  shadowRadius: 24,
-  elevation: 12,
+  shadowRadius: 32,
+  elevation: 16,
 }
 
 const fabShadow = {
-  shadowColor: '#18181b',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.45,
-  shadowRadius: 10,
-  elevation: 8,
+  shadowColor: '#FF6B35',
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.5,
+  shadowRadius: 16,
+  elevation: 10,
+}
+
+function FabButton({ onPress }: { onPress: () => void }) {
+  const scale = useSharedValue(1)
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Catat makanan"
+      onPressIn={() => { scale.value = withSpring(0.88, { damping: 12 }) }}
+      onPressOut={() => { scale.value = withSpring(1, { damping: 10 }) }}
+      onPress={onPress}
+      style={{ marginHorizontal: 4, marginTop: -18 }}
+    >
+      <Animated.View
+        style={[
+          {
+            width: 58,
+            height: 58,
+            borderRadius: 29,
+            backgroundColor: '#FF6B35',
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
+          fabShadow,
+          animStyle,
+        ]}
+      >
+        <Plus size={26} color="#ffffff" strokeWidth={2.6} />
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+function TabButton({
+  icon: Icon,
+  label,
+  isFocused,
+  onPress,
+}: {
+  icon: LucideIcon
+  label: string
+  isFocused: boolean
+  onPress: () => void
+}) {
+  const dotOpacity = useSharedValue(isFocused ? 1 : 0)
+  const iconScale = useSharedValue(isFocused ? 1 : 0.9)
+
+  useEffect(() => {
+    dotOpacity.value = withTiming(isFocused ? 1 : 0, { duration: 180 })
+    iconScale.value = withSpring(isFocused ? 1 : 0.9, { damping: 14 })
+  }, [isFocused, dotOpacity, iconScale])
+
+  const dotStyle = useAnimatedStyle(() => ({ opacity: dotOpacity.value }))
+  const iconStyle = useAnimatedStyle(() => ({ transform: [{ scale: iconScale.value }] }))
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={isFocused ? { selected: true } : {}}
+      onPress={onPress}
+      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+    >
+      <View style={{ width: 56, height: 56, alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+        <Animated.View style={iconStyle}>
+          <Icon
+            size={isFocused ? 24 : 22}
+            color={isFocused ? '#FF6B35' : '#8A8886'}
+            strokeWidth={isFocused ? 2.5 : 1.8}
+          />
+        </Animated.View>
+        <Animated.View
+          style={[
+            { width: 4, height: 4, borderRadius: 2, backgroundColor: '#FF6B35' },
+            dotStyle,
+          ]}
+        />
+      </View>
+    </Pressable>
+  )
 }
 
 export function CimeatTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets()
-  const accent = useAccentColor()
+  const slideY = useSharedValue(80)
+  const opacity = useSharedValue(0)
+
+  useEffect(() => {
+    slideY.value = withSpring(0, { damping: 18, stiffness: 180 })
+    opacity.value = withTiming(1, { duration: 300 })
+  }, [slideY, opacity])
+
+  const containerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: slideY.value }],
+    opacity: opacity.value,
+  }))
 
   return (
     <View
       pointerEvents="box-none"
-      className="absolute bottom-0 left-0 right-0 items-center"
-      style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+      style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        paddingBottom: Math.max(insets.bottom, 16),
+        paddingHorizontal: 20,
+      }}
     >
-      <View
-        className="flex-row items-center gap-1 rounded-full border border-zinc-100 bg-white px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900"
-        style={barShadow}
+      <Animated.View
+        style={[
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            height: 68,
+            borderRadius: 34,
+            backgroundColor: 'rgba(255,255,255,0.92)',
+            paddingHorizontal: 6,
+          },
+          barShadow,
+          containerStyle,
+        ]}
       >
         {state.routes.map((route, index) => {
           const key = route.name as TabKey
@@ -67,57 +183,20 @@ export function CimeatTabBar({ state, navigation }: BottomTabBarProps) {
           }
 
           if (key === 'log') {
-            return (
-              <Pressable
-                key={route.key}
-                accessibilityRole="button"
-                accessibilityLabel="Catat makanan"
-                onPress={navigate}
-                style={({ pressed }) => ({
-                  transform: [{ scale: pressed ? 0.9 : 1 }],
-                  marginHorizontal: 6,
-                })}
-              >
-                <View
-                  className="h-14 w-14 items-center justify-center rounded-full bg-primary-600"
-                  style={fabShadow}
-                >
-                  <Plus size={26} color="#ffffff" strokeWidth={2.6} />
-                </View>
-              </Pressable>
-            )
+            return <FabButton key={route.key} onPress={navigate} />
           }
 
-          const Icon = config.icon
           return (
-            <Pressable
+            <TabButton
               key={route.key}
-              accessibilityRole="button"
-              accessibilityLabel={config.label}
-              accessibilityState={isFocused ? { selected: true } : {}}
+              icon={config.icon}
+              label={config.label}
+              isFocused={isFocused}
               onPress={navigate}
-              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-            >
-              <View className="h-14 w-14 items-center justify-center">
-                <Icon
-                  size={isFocused ? 25 : 23}
-                  color={isFocused ? accent : '#a1a1aa'}
-                  strokeWidth={isFocused ? 2.5 : 1.8}
-                />
-                <View
-                  style={{
-                    height: 3,
-                    width: 3,
-                    borderRadius: 1.5,
-                    marginTop: 3,
-                    backgroundColor: isFocused ? accent : 'transparent',
-                  }}
-                />
-              </View>
-            </Pressable>
+            />
           )
         })}
-      </View>
+      </Animated.View>
     </View>
   )
 }

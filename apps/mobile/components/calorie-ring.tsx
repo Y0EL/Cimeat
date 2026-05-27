@@ -39,16 +39,16 @@ export function CalorieRing({ consumed, goal, size = 220, strokeWidth = 18 }: Pr
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
         <Defs>
           <LinearGradient id="calorieRing" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor="#fb923c" />
-            <Stop offset="1" stopColor="#ea580c" />
+            <Stop offset="0" stopColor="#FF6B35" />
+            <Stop offset="1" stopColor="#FF8C61" />
           </LinearGradient>
         </Defs>
         <Circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="#fed7aa"
-          strokeOpacity={0.5}
+          stroke="#FF6B35"
+          strokeOpacity={0.12}
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -67,15 +67,14 @@ export function CalorieRing({ consumed, goal, size = 220, strokeWidth = 18 }: Pr
       </Svg>
       <View style={{ alignItems: 'center' }}>
         <Text
-          className="font-display text-5xl font-extrabold text-zinc-900 dark:text-zinc-100"
-          style={{ fontVariant: ['tabular-nums'] }}
+          style={{ fontFamily: 'Outfit_900Black', fontSize: 48, color: '#1A1C1E', fontVariant: ['tabular-nums'] }}
         >
           {Math.abs(remaining).toLocaleString('id-ID')}
         </Text>
-        <Text className="mt-1 font-sans text-xs font-medium uppercase tracking-widest text-zinc-400">
+        <Text style={{ marginTop: 4, fontFamily: 'Outfit_700Bold', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: '#8A8886' }}>
           {over ? 'kkal lebih' : 'kkal tersisa'}
         </Text>
-        <Text className="mt-2 font-sans text-xs text-zinc-500 dark:text-zinc-400">
+        <Text style={{ marginTop: 8, fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>
           {Math.round(consumed).toLocaleString('id-ID')} / {Math.round(goal).toLocaleString('id-ID')}
         </Text>
       </View>

@@ -1,66 +1,25 @@
+import { createHash } from 'crypto'
 import { GoogleGenAI } from '@google/genai'
 import type { CimitTone, CimitVoice } from '@cimeat/types'
 import { loadEnv } from '../env'
 import { HttpError } from '../errors'
 import { logger } from '../logger'
-import { uploadBase64 } from './storage-service'
+import { getOrUploadAudio, uploadBase64 } from './storage-service'
 
 export type TtsResult = { audioUrl: string; text: string }
 
-const TONE_TAGS: Record<CimitTone, string> = {
-  soft: '[positive]',
-  normal: '[amusement]',
-  savage: '[frustration] [aggression]',
-}
-
-const EXPRESSION_TAGS = [
-  'admiration',
-  'adoration',
-  'aggression',
-  'agitation',
-  'amusement',
-  'anger',
-  'annoyance',
-  'awe',
-  'confusion',
-  'curiosity',
-  'determination',
-  'enthusiasm',
-  'excitement',
-  'frustration',
-  'hope',
-  'interest',
-  'laughs',
-  'negative',
-  'nervousness',
-  'neutral',
-  'positive',
-  'tension',
-  'whispers',
-] as const
-
-async function annotateExpression(text: string, tone: CimitTone): Promise<string> {
-  const env = loadEnv()
-  const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY })
-  const tagList = EXPRESSION_TAGS.map((t) => `[${t}]`).join(' ')
-  const prompt = [
-    'Sisipkan expression tag untuk pembacaan TTS yang ekspresif dan natural.',
-    `Tag yang boleh dipakai (pilih yang paling pas per kalimat/frasa, boleh kombinasi beberapa, gunakan dari SEMUA opsi ini sesuai emosi konteks): ${tagList}.`,
-    `Vibe karakter Cimit dengan tone "${tone}".`,
-    'Aturan: JANGAN ubah kata-kata aslinya, JANGAN tambah kalimat baru, JANGAN kasih penjelasan. Cukup kembalikan teks asli dengan tag [..] disisipkan inline di posisi yang tepat.',
-    `Teks: """${text}"""`,
-  ].join('\n')
-
-  try {
-    const res = await ai.models.generateContent({
-      model: env.GEMINI_MODEL_CHAT,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    })
-    const out = res.text?.trim()
-    return out && out.length > 0 ? out : `${TONE_TAGS[tone]} ${text}`
-  } catch {
-    return `${TONE_TAGS[tone]} ${text}`
+function inferStyle(text: string, tone: CimitTone): string {
+  const lower = text.toLowerCase()
+  if (/bagus|hebat|selamat|luar biasa|keren|mantap/.test(lower)) return '[positive] [enthusiasm]'
+  if (/hati-hati|perlu|kurang|lebih|jaga|pastikan/.test(lower)) return '[concern]'
+  if (/coba|bisa|yuk|ayo|saran/.test(lower)) return '[hope] [positive]'
+  if (/roast|becanda|haha|lucu|ngakak/.test(lower)) return '[amusement] [laughs]'
+  const toneMap: Record<CimitTone, string> = {
+    soft: '[positive]',
+    normal: '[amusement]',
+    savage: '[frustration] [aggression]',
   }
+  return toneMap[tone]
 }
 
 type WavOptions = { numChannels: number; sampleRate: number; bitsPerSample: number }
@@ -106,10 +65,11 @@ async function synthGemini(
   text: string,
   tone: CimitTone,
   voiceName: string,
+  signal?: AbortSignal,
 ): Promise<{ buffer: Buffer; mime: string }> {
   const env = loadEnv()
   const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY })
-  const scripted = await annotateExpression(text, tone)
+  const scripted = `${inferStyle(text, tone)} ${text}`
 
   const response = await ai.models.generateContent({
     model: env.GEMINI_MODEL_TTS,
@@ -120,6 +80,8 @@ async function synthGemini(
     },
     contents: [{ role: 'user', parts: [{ text: scripted }] }],
   })
+
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
 
   const part = response.candidates?.[0]?.content?.parts?.find((p) => p.inlineData)
   const inline = part?.inlineData
@@ -147,10 +109,16 @@ async function synthOpenAI(text: string, apiKey: string, voiceId: string): Promi
   return Buffer.from(await res.arrayBuffer())
 }
 
+function buildCacheKey(text: string, voiceName: string, provider: string): string {
+  const hash = createHash('sha256').update(`${provider}:${voiceName}:${text}`).digest('hex').slice(0, 24)
+  return `audio/${hash}.wav`
+}
+
 export async function synthesize(
   text: string,
   tone: CimitTone = 'normal',
   voice: CimitVoice = 'female',
+  signal?: AbortSignal,
 ): Promise<TtsResult> {
   const env = loadEnv()
   if (env.TTS_PROVIDER === 'none') return { audioUrl: '', text }
@@ -159,17 +127,24 @@ export async function synthesize(
 
   try {
     let buffer: Buffer
-    let mime = 'audio/mpeg'
+    let mime = 'audio/wav'
+
     if (env.TTS_PROVIDER === 'gemini') {
-      const out = await synthGemini(text, tone, voiceName)
+      const cacheKey = buildCacheKey(text, voiceName, 'gemini')
+      const out = await synthGemini(text, tone, voiceName, signal)
       buffer = out.buffer
       mime = out.mime
-    } else if (env.TTS_PROVIDER === 'elevenlabs') {
+      const audioUrl = await getOrUploadAudio(buffer, mime, cacheKey)
+      return { audioUrl: audioUrl ?? '', text }
+    }
+
+    if (env.TTS_PROVIDER === 'elevenlabs') {
       if (!env.TTS_API_KEY) throw new HttpError(501, 'NOT_IMPLEMENTED', 'TTS belum dikonfigurasi')
       buffer = await synthElevenLabs(text, env.TTS_API_KEY, env.TTS_VOICE_ID ?? '')
     } else if (env.TTS_PROVIDER === 'openai') {
       if (!env.TTS_API_KEY) throw new HttpError(501, 'NOT_IMPLEMENTED', 'TTS belum dikonfigurasi')
       buffer = await synthOpenAI(text, env.TTS_API_KEY, env.TTS_VOICE_ID ?? '')
+      mime = 'audio/mpeg'
     } else {
       throw new HttpError(501, 'NOT_IMPLEMENTED', 'TTS provider tidak didukung')
     }
@@ -178,6 +153,7 @@ export async function synthesize(
     return { audioUrl: audioUrl ?? '', text }
   } catch (err) {
     if (err instanceof HttpError) throw err
+    if (err instanceof DOMException && err.name === 'AbortError') throw err
     logger.error({ err, provider: env.TTS_PROVIDER }, 'tts synthesis failed')
     throw new HttpError(502, 'AI_ERROR', 'Gagal sintesis suara')
   }

@@ -77,7 +77,7 @@ export function getCategoryMeta(key: CategoryKey): CategoryMeta {
 }
 
 export const MACRO_COLORS = {
-  calories: '#f97316',
+  calories: '#FF6B35',
   protein: '#f43f5e',
   carb: '#f59e0b',
   fat: '#0ea5e9',

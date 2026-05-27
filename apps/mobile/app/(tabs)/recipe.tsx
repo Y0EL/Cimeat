@@ -14,7 +14,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { CreateFoodLogInput, EatingMode, RecipeResponse } from '@cimeat/types'
 import { formatKcal } from '@cimeat/chat-core'
-import { CimitMascot } from '~/components/cimit/cimit-mascot'
 import { TtsButton } from '~/components/cimit/tts-button'
 import { QuotaBadge } from '~/components/quota-badge'
 import { ScreenFade } from '~/components/screen-fade'
@@ -24,7 +23,6 @@ import { useGenerateRecipe, useSavedRecipes } from '~/hooks/use-recipe-generate'
 import { useSubscription } from '~/hooks/use-subscription'
 import { apiErrorMessage, isQuotaExceeded } from '~/lib/api'
 import { track } from '~/lib/analytics'
-import { useAccentColor } from '~/lib/use-accent-color'
 
 const MODES: { key: EatingMode; label: string; emoji: string }[] = [
   { key: 'hemat', label: 'Hemat', emoji: '💸' },
@@ -33,7 +31,6 @@ const MODES: { key: EatingMode; label: string; emoji: string }[] = [
 ]
 
 export default function RecipeTab() {
-  const accent = useAccentColor()
   const generate = useGenerateRecipe()
   const saved = useSavedRecipes()
   const create = useCreateFoodLog()
@@ -107,80 +104,77 @@ export default function RecipeTab() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-cream dark:bg-zinc-950" edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F7F4' }} edges={['top']}>
       <ScreenFade>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
-          <View className="flex-row items-center justify-between px-4 pb-1 pt-2">
-            <Text className="font-display text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 4, paddingTop: 12 }}>
+            <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 26, color: '#1A1C1E' }}>
               Resep dari bahan
             </Text>
             <QuotaBadge feature="recipe" />
           </View>
 
-          <ScrollView className="flex-1" contentContainerClassName="px-4 pb-32 pt-3" keyboardShouldPersistTaps="handled">
-            <View className="rounded-card bg-white p-4 dark:bg-zinc-900">
-              <Text className="mb-2 font-sans text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120, paddingTop: 12 }} keyboardShouldPersistTaps="handled">
+            <View style={{ borderRadius: 24, backgroundColor: '#FFFFFF', padding: 16, shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
+              <Text style={{ marginBottom: 8, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: '#8A8886' }}>
                 Bahan yang ada
               </Text>
-              <View className="flex-row items-center gap-2">
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <TextInput
                   value={draft}
                   onChangeText={setDraft}
                   placeholder="Contoh: telur, bayam, nasi..."
-                  placeholderTextColor="#a1a1aa"
+                  placeholderTextColor="#8A8886"
                   onSubmitEditing={addIngredient}
                   returnKeyType="done"
-                  className="flex-1 rounded-input bg-zinc-100 px-4 py-3 font-sans text-base text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
+                  style={{ flex: 1, borderRadius: 14, backgroundColor: '#F8F7F4', paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}
                 />
                 <Pressable
                   onPress={addIngredient}
-                  className="h-11 w-11 items-center justify-center rounded-full bg-primary-600 active:opacity-80"
+                  style={({ pressed }) => ({ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: '#FF6B35', opacity: pressed ? 0.8 : 1 })}
                 >
                   <Plus size={20} color="#fff" />
                 </Pressable>
               </View>
               {ingredients.length > 0 ? (
-                <View className="mt-3 flex-row flex-wrap gap-2">
+                <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {ingredients.map((ing) => (
                     <Pressable
                       key={ing}
                       onPress={() => removeIngredient(ing)}
-                      className="flex-row items-center gap-1 rounded-full bg-primary-100 px-3 py-1.5 active:opacity-70 dark:bg-primary-950"
+                      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 99, backgroundColor: '#FFF3EE', paddingHorizontal: 12, paddingVertical: 6, opacity: pressed ? 0.7 : 1 })}
                     >
-                      <Text className="font-sans text-xs font-semibold text-primary-700 dark:text-primary-300">
+                      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 12, color: '#FF6B35' }}>
                         {ing}
                       </Text>
-                      <X size={12} color="#ea580c" />
+                      <X size={12} color="#FF6B35" />
                     </Pressable>
                   ))}
                 </View>
               ) : null}
             </View>
 
-            <Text className="mb-2 mt-4 font-sans text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <Text style={{ marginBottom: 8, marginTop: 16, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: '#8A8886' }}>
               Mode
             </Text>
-            <View className="flex-row gap-2">
+            <View style={{ flexDirection: 'row', gap: 8 }}>
               {MODES.map((m) => {
                 const active = mode === m.key
                 return (
                   <Pressable
                     key={m.key}
                     onPress={() => setMode(m.key)}
-                    className={
-                      active
-                        ? 'flex-1 items-center rounded-2xl bg-primary-600 py-3'
-                        : 'flex-1 items-center rounded-2xl bg-white py-3 dark:bg-zinc-900'
-                    }
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      alignItems: 'center',
+                      borderRadius: 20,
+                      backgroundColor: active ? '#FF6B35' : '#FFFFFF',
+                      paddingVertical: 14,
+                      opacity: pressed ? 0.85 : 1,
+                    })}
                   >
-                    <Text className="text-lg">{m.emoji}</Text>
-                    <Text
-                      className={
-                        active
-                          ? 'mt-1 font-sans text-xs font-semibold text-white'
-                          : 'mt-1 font-sans text-xs font-medium text-zinc-600 dark:text-zinc-300'
-                      }
-                    >
+                    <Text style={{ fontSize: 20 }}>{m.emoji}</Text>
+                    <Text style={{ marginTop: 4, fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : '#8A8886' }}>
                       {m.label}
                     </Text>
                   </Pressable>
@@ -188,30 +182,30 @@ export default function RecipeTab() {
               })}
             </View>
 
-            <View className="mt-4 flex-row gap-3">
-              <View className="flex-1">
-                <Text className="mb-1.5 font-sans text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <View style={{ marginTop: 16, flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ marginBottom: 6, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: '#8A8886' }}>
                   Budget (Rp)
                 </Text>
                 <TextInput
                   value={budget}
                   onChangeText={setBudget}
                   placeholder="opsional"
-                  placeholderTextColor="#a1a1aa"
+                  placeholderTextColor="#8A8886"
                   keyboardType="number-pad"
-                  className="rounded-input bg-white px-4 py-3 font-sans text-base text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100"
+                  style={{ borderRadius: 14, backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}
                 />
               </View>
-              <View className="flex-1">
-                <Text className="mb-1.5 font-sans text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              <View style={{ flex: 1 }}>
+                <Text style={{ marginBottom: 6, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: '#8A8886' }}>
                   Hindari
                 </Text>
                 <TextInput
                   value={avoid}
                   onChangeText={setAvoid}
                   placeholder="cabai, santan"
-                  placeholderTextColor="#a1a1aa"
-                  className="rounded-input bg-white px-4 py-3 font-sans text-base text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100"
+                  placeholderTextColor="#8A8886"
+                  style={{ borderRadius: 14, backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1A1C1E' }}
                 />
               </View>
             </View>
@@ -219,14 +213,24 @@ export default function RecipeTab() {
             <Pressable
               onPress={run}
               disabled={generate.isPending}
-              className="mt-4 flex-row items-center justify-center gap-2 rounded-full bg-primary-600 py-3.5 active:opacity-90 disabled:opacity-50"
+              style={({ pressed }) => ({
+                marginTop: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                borderRadius: 99,
+                backgroundColor: '#FF6B35',
+                paddingVertical: 14,
+                opacity: pressed || generate.isPending ? 0.7 : 1,
+              })}
             >
               {generate.isPending ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
                   <Sparkles size={18} color="#fff" />
-                  <Text className="font-sans text-sm font-semibold text-white">Bikinin resep</Text>
+                  <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#ffffff' }}>Bikinin resep</Text>
                 </>
               )}
             </Pressable>
@@ -234,24 +238,33 @@ export default function RecipeTab() {
             {result ? <RecipeResult recipe={result} onLog={() => logPerServing(result)} /> : null}
 
             {saved.data && saved.data.length > 0 ? (
-              <View className="mt-6">
-                <Text className="mb-2 font-sans text-xs font-semibold uppercase tracking-widest text-zinc-500">
+              <View style={{ marginTop: 24 }}>
+                <Text style={{ marginBottom: 8, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: '#8A8886' }}>
                   Resep tersimpan
                 </Text>
-                <View className="gap-2">
+                <View style={{ gap: 8 }}>
                   {saved.data.map((r, i) => (
                     <Pressable
                       key={r.id ?? `${r.title}-${i}`}
                       onPress={() => setResult(r)}
-                      className="flex-row items-center gap-3 rounded-card bg-white px-4 py-3 active:opacity-70 dark:bg-zinc-900"
+                      style={({ pressed }) => ({
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        borderRadius: 20,
+                        backgroundColor: '#FFFFFF',
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        opacity: pressed ? 0.8 : 1,
+                      })}
                     >
-                      <View className="h-9 w-9 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-950">
-                        <UtensilsCrossed size={16} color={accent} />
+                      <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#FFF3EE' }}>
+                        <UtensilsCrossed size={16} color="#FF6B35" />
                       </View>
-                      <Text className="flex-1 font-sans text-sm font-semibold text-zinc-900 dark:text-zinc-100" numberOfLines={1}>
+                      <Text style={{ flex: 1, fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#1A1C1E' }} numberOfLines={1}>
                         {r.title}
                       </Text>
-                      <Text className="font-display text-xs font-bold text-primary-600 dark:text-primary-300">
+                      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 13, color: '#FF6B35' }}>
                         {formatKcal(r.nutrition_estimate.calories)}
                       </Text>
                     </Pressable>
@@ -269,11 +282,11 @@ export default function RecipeTab() {
 function RecipeResult({ recipe, onLog }: { recipe: RecipeResponse; onLog: () => void }) {
   const n = recipe.nutrition_estimate
   return (
-    <View className="mt-5 rounded-card bg-white p-4 dark:bg-zinc-900">
-      <Text className="font-display text-lg font-bold text-zinc-900 dark:text-zinc-100">
+    <View style={{ marginTop: 20, borderRadius: 24, backgroundColor: '#FFFFFF', padding: 16, shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}>
+      <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 20, color: '#1A1C1E' }}>
         {recipe.title}
       </Text>
-      <View className="mt-2 flex-row flex-wrap gap-2">
+      <View style={{ marginTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         <Pill label={`${formatKcal(n.calories)} total`} />
         <Pill label={`${Math.round(n.protein_g)}g protein`} />
         <Pill label={`${Math.round(n.carbs_g)}g karbo`} />
@@ -284,9 +297,11 @@ function RecipeResult({ recipe, onLog }: { recipe: RecipeResponse; onLog: () => 
       <MarkdownText text={recipe.recipe_markdown} className="mt-3" />
 
       {recipe.cimit_message ? (
-        <View className="mt-3 flex-row items-start gap-2 rounded-2xl bg-primary-50 px-3 py-2.5 dark:bg-primary-950">
-          <CimitMascot size={32} />
-          <Text className="flex-1 font-sans text-sm leading-5 text-zinc-700 dark:text-zinc-200">
+        <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 20, backgroundColor: '#2A2D30', paddingHorizontal: 14, paddingVertical: 12 }}>
+          <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#FF6B35', alignItems: 'center', justifyContent: 'center' }}>
+            <Sparkles size={13} color="#ffffff" />
+          </View>
+          <Text style={{ flex: 1, fontFamily: 'Outfit_400Regular', fontSize: 13, lineHeight: 20, color: '#F8F7F4' }}>
             {recipe.cimit_message}
           </Text>
           <TtsButton text={recipe.cimit_message} size={16} />
@@ -295,9 +310,16 @@ function RecipeResult({ recipe, onLog }: { recipe: RecipeResponse; onLog: () => 
 
       <Pressable
         onPress={onLog}
-        className="mt-3 items-center rounded-full bg-primary-100 py-3 active:opacity-70 dark:bg-primary-950"
+        style={({ pressed }) => ({
+          marginTop: 12,
+          alignItems: 'center',
+          borderRadius: 99,
+          backgroundColor: '#FFF3EE',
+          paddingVertical: 12,
+          opacity: pressed ? 0.8 : 1,
+        })}
       >
-        <Text className="font-sans text-sm font-semibold text-primary-700 dark:text-primary-300">
+        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#FF6B35' }}>
           Catat 1 porsi
         </Text>
       </Pressable>
@@ -307,8 +329,8 @@ function RecipeResult({ recipe, onLog }: { recipe: RecipeResponse; onLog: () => 
 
 function Pill({ label }: { label: string }) {
   return (
-    <View className="rounded-full bg-zinc-100 px-3 py-1 dark:bg-zinc-800">
-      <Text className="font-sans text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
+    <View style={{ borderRadius: 99, backgroundColor: '#F8F7F4', paddingHorizontal: 12, paddingVertical: 4 }}>
+      <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, color: '#8A8886' }}>
         {label}
       </Text>
     </View>

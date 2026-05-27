@@ -1,11 +1,14 @@
-import { useMemo, useState } from 'react'
-import { ScrollView, Text, useWindowDimensions, View } from 'react-native'
-import { Pressable } from 'react-native'
+import { useRef, useMemo, useState } from 'react'
+import { Platform, Pressable, ScrollView, Share, Text, useWindowDimensions, View } from 'react-native'
+import Animated, { FadeInDown } from 'react-native-reanimated'
+import ViewShot, { type ViewShotRef } from 'react-native-view-shot'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { Flame, Share2, Sparkles, TrendingUp } from 'lucide-react-native'
 import { formatKcal } from '@cimeat/chat-core'
 import { DonutChart } from '~/components/donut-chart'
 import { LineChart } from '~/components/line-chart'
 import { ScreenFade } from '~/components/screen-fade'
+import { useAuth } from '~/hooks/use-auth'
 import { useGoals } from '~/hooks/use-goals'
 import { useFlexTrend, type TrendPeriod } from '~/hooks/use-trend'
 import { MACRO_COLORS } from '~/lib/categories'
@@ -26,11 +29,13 @@ function rangeFor(period: TrendPeriod): { from: string; to: string } {
 }
 
 export default function ProgressTab() {
+  const { user } = useAuth()
   const { width } = useWindowDimensions()
   const [period, setPeriod] = useState<TrendPeriod>('daily')
   const goals = useGoals()
   const { from, to } = useMemo(() => rangeFor(period), [period])
   const trend = useFlexTrend(period, from, to)
+  const shareRef = useRef<ViewShotRef>(null)
 
   const data = trend.data ?? []
   const withData = data.filter((d) => d.calories > 0)
@@ -62,88 +67,185 @@ export default function ProgressTab() {
 
   const chartWidth = width - 56
 
+  async function onShare() {
+    try {
+      const uri = await shareRef.current?.capture?.()
+      if (!uri) return
+      await Share.share(Platform.OS === 'ios' ? { url: uri } : { message: uri })
+    } catch {}
+  }
+
+  const firstName = user?.displayName?.split(' ')[0] ?? 'kamu'
+
   return (
-    <SafeAreaView className="flex-1 bg-cream dark:bg-zinc-950" edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F7F4' }} edges={['top']}>
       <ScreenFade>
-        <View className="px-4 pt-3">
-          <Text className="font-sans text-sm text-zinc-500 dark:text-zinc-400">Statistik</Text>
-          <Text className="font-display text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+        <Animated.View entering={FadeInDown.delay(0).duration(400)} style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+          <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#8A8886' }}>Statistik</Text>
+          <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 26, color: '#1A1C1E', marginTop: 2 }}>
             Progres lo
           </Text>
-        </View>
+        </Animated.View>
 
-        <ScrollView className="flex-1" contentContainerClassName="px-4 pb-32 pt-4">
-          <View className="flex-row gap-1 rounded-full bg-zinc-100 p-1 dark:bg-zinc-800">
-            {PERIODS.map((p) => {
-              const active = period === p.key
-              return <Pill key={p.key} label={p.label} active={active} onPress={() => setPeriod(p.key)} />
-            })}
-          </View>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120, paddingTop: 16 }}>
+          <Animated.View entering={FadeInDown.delay(40).duration(400)}>
+            <View style={{ flexDirection: 'row', gap: 4, borderRadius: 99, backgroundColor: '#FFFFFF', padding: 4 }}>
+              {PERIODS.map((p) => {
+                const active = period === p.key
+                return (
+                  <Pressable
+                    key={p.key}
+                    onPress={() => setPeriod(p.key)}
+                    style={{ flex: 1, alignItems: 'center', borderRadius: 99, paddingVertical: 10, backgroundColor: active ? '#FF6B35' : 'transparent' }}
+                  >
+                    <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 13, color: active ? '#ffffff' : '#8A8886' }}>
+                      {p.label}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </Animated.View>
 
-          <View className="mt-4 flex-row gap-3">
-            <Stat label="Rata-rata" value={formatKcal(avgCalories)} />
-            <Stat label="On-target" value={`${onTarget}x`} />
-            <Stat label="Streak" value={`${streak}🔥`} />
-          </View>
+          <Animated.View entering={FadeInDown.delay(80).duration(400)} style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+            <StatCard label="Rata-rata" value={formatKcal(avgCalories)} />
+            <StatCard label="On-target" value={`${onTarget}x`} />
+            <StatCard label="Streak" value={`${streak}🔥`} />
+          </Animated.View>
 
-          <View className="mt-4 rounded-card bg-white p-4 dark:bg-zinc-900">
-            <Text className="mb-3 font-sans text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+          <Animated.View
+            entering={FadeInDown.delay(120).duration(400)}
+            style={{
+              marginTop: 14,
+              borderRadius: 32,
+              backgroundColor: '#2A2D30',
+              padding: 20,
+              overflow: 'hidden',
+              shadowColor: '#1A1C1E',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.18,
+              shadowRadius: 24,
+              elevation: 8,
+            }}
+          >
+            <View style={{ position: 'absolute', top: -40, left: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: '#FF6B35', opacity: 0.12 }} pointerEvents="none" />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#FF6B35', alignItems: 'center', justifyContent: 'center' }}>
+                <Sparkles size={20} color="#ffffff" />
+              </View>
+              <View>
+                <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: '#ffffff' }}>AI Coach</Text>
+                <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886', marginTop: 1 }}>Analisis progres lo</Text>
+              </View>
+            </View>
+            <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, lineHeight: 22, color: '#F8F7F4' }}>
+              {streak >= 7
+                ? `Streak ${streak} hari! Lo konsisten banget. Pertahankan pola ini buat hasil optimal.`
+                : avgCalories > 0
+                ? `Rata-rata kalori lo ${formatKcal(avgCalories)} / hari. ${goalCal > 0 && avgCalories <= goalCal ? 'Bagus, lo on-track!' : 'Coba lebih dekat ke target lo.'}`
+                : 'Mulai catat makanan lo biar AI Coach bisa kasih analisis yang lebih personal.'}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 }}>
+              <Flame size={16} color="#FF6B35" />
+              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#FF6B35' }}>
+                {streak} hari streak
+              </Text>
+            </View>
+          </Animated.View>
+
+          <Animated.View
+            entering={FadeInDown.delay(160).duration(400)}
+            style={{ marginTop: 14, borderRadius: 24, backgroundColor: '#FFFFFF', padding: 16, shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}
+          >
+            <Text style={{ marginBottom: 12, fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#1A1C1E' }}>
               Tren kalori
             </Text>
             {data.length > 0 ? (
               <LineChart data={data} width={chartWidth} period={period} />
             ) : (
-              <View className="items-center py-10">
-                <Text className="font-sans text-sm text-zinc-400">Belum ada data</Text>
+              <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                <TrendingUp size={32} color="#D0CEC9" />
+                <Text style={{ marginTop: 8, fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#8A8886' }}>Belum ada data</Text>
               </View>
             )}
-          </View>
+          </Animated.View>
 
-          <View className="mt-4 items-center rounded-card bg-white p-4 dark:bg-zinc-900">
-            <Text className="mb-3 self-start font-sans text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+          <Animated.View
+            entering={FadeInDown.delay(200).duration(400)}
+            style={{ marginTop: 14, borderRadius: 24, backgroundColor: '#FFFFFF', padding: 16, alignItems: 'center', shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 }}
+          >
+            <Text style={{ marginBottom: 12, alignSelf: 'flex-start', fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#1A1C1E' }}>
               Sebaran makro (kalori)
             </Text>
             <DonutChart slices={macroSlices} centerLabel="Periode" centerValue={`${data.length}`} />
-            <View className="mt-3 flex-row gap-4">
+            <View style={{ marginTop: 12, flexDirection: 'row', gap: 16 }}>
               <Legend color={MACRO_COLORS.protein} label="Protein" />
               <Legend color={MACRO_COLORS.carb} label="Karbo" />
               <Legend color={MACRO_COLORS.fat} label="Lemak" />
             </View>
-          </View>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(240).duration(400)} style={{ marginTop: 14 }}>
+            <ViewShot ref={shareRef} options={{ format: 'png', quality: 0.95 }}>
+              <View
+                style={{
+                  borderRadius: 28,
+                  backgroundColor: '#FF6B35',
+                  padding: 24,
+                  overflow: 'hidden',
+                }}
+              >
+                <View style={{ position: 'absolute', bottom: -20, right: -20, width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(255,255,255,0.1)' }} pointerEvents="none" />
+                <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>Pencapaian minggu ini</Text>
+                <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 22, color: '#ffffff', marginTop: 4 }}>{firstName}</Text>
+                <View style={{ flexDirection: 'row', gap: 20, marginTop: 16 }}>
+                  <View>
+                    <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>Streak</Text>
+                    <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 20, color: '#ffffff' }}>{streak}🔥</Text>
+                  </View>
+                  <View>
+                    <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>Rata-rata</Text>
+                    <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 20, color: '#ffffff' }}>{formatKcal(avgCalories)}</Text>
+                  </View>
+                  <View>
+                    <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>On-target</Text>
+                    <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 20, color: '#ffffff' }}>{onTarget}x</Text>
+                  </View>
+                </View>
+                <Text style={{ marginTop: 16, fontFamily: 'Outfit_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Cimeat · cimeat.app</Text>
+              </View>
+            </ViewShot>
+            <Pressable
+              onPress={onShare}
+              style={({ pressed }) => ({
+                marginTop: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                borderRadius: 20,
+                backgroundColor: '#FFFFFF',
+                paddingVertical: 14,
+                opacity: pressed ? 0.8 : 1,
+                borderWidth: 1.5,
+                borderColor: '#FF6B3530',
+              })}
+            >
+              <Share2 size={16} color="#FF6B35" />
+              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#FF6B35' }}>Bagikan Pencapaian</Text>
+            </Pressable>
+          </Animated.View>
         </ScrollView>
       </ScreenFade>
     </SafeAreaView>
   )
 }
 
-function Pill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <Pressable
-      onPress={onPress}
-      className={
-        active
-          ? 'flex-1 items-center rounded-full bg-primary-600 py-2'
-          : 'flex-1 items-center rounded-full py-2'
-      }
-    >
-      <Text
-        className={
-          active
-            ? 'font-sans text-xs font-semibold text-white'
-            : 'font-sans text-xs font-medium text-zinc-600 dark:text-zinc-300'
-        }
-      >
-        {label}
-      </Text>
-    </Pressable>
-  )
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <View className="flex-1 rounded-card bg-white p-4 dark:bg-zinc-900">
-      <Text className="font-sans text-xs text-zinc-500 dark:text-zinc-400">{label}</Text>
-      <Text className="mt-1 font-display text-lg font-bold text-primary-600 dark:text-primary-300">
+    <View style={{ flex: 1, borderRadius: 20, backgroundColor: '#FFFFFF', padding: 14, shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+      <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 11, color: '#8A8886', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</Text>
+      <Text style={{ marginTop: 4, fontFamily: 'Outfit_900Black', fontSize: 18, color: '#FF6B35' }}>
         {value}
       </Text>
     </View>
@@ -152,9 +254,9 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function Legend({ color, label }: { color: string; label: string }) {
   return (
-    <View className="flex-row items-center gap-1.5">
-      <View className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-      <Text className="font-sans text-xs text-zinc-500 dark:text-zinc-400">{label}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
+      <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>{label}</Text>
     </View>
   )
 }

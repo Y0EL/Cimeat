@@ -10,5 +10,5 @@ export function useIsDark(): boolean {
 }
 
 export function useAccentColor(): string {
-  return useIsDark() ? '#fb923c' : '#ea580c'
+  return '#FF6B35'
 }

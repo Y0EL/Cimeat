@@ -1,8 +1,7 @@
 import { useRouter } from 'expo-router'
-import { ChevronRight, Flame } from 'lucide-react-native'
+import { ChevronRight, Flame, Sparkles } from 'lucide-react-native'
 import { ActivityIndicator, Pressable, Text, View } from 'react-native'
 import type { CimitTone } from '@cimeat/types'
-import { CimitMascot } from '~/components/cimit/cimit-mascot'
 import { TtsButton } from '~/components/cimit/tts-button'
 
 type Props = {
@@ -18,52 +17,82 @@ export function CimitAdviceCard({ message, loading, isRoast, tone }: Props) {
   return (
     <Pressable
       onPress={() => router.push('/cimit')}
-      className="mx-4 mt-4 overflow-hidden rounded-3xl bg-white p-4 active:opacity-90 dark:bg-zinc-900"
       style={{
-        shadowColor: isRoast ? '#ef4444' : '#ea580c',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.14,
-        shadowRadius: 18,
-        elevation: 5,
+        marginHorizontal: 16,
+        marginTop: 16,
+        borderRadius: 32,
+        backgroundColor: '#2A2D30',
+        overflow: 'hidden',
+        shadowColor: isRoast ? '#ef4444' : '#FF6B35',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.28,
+        shadowRadius: 24,
+        elevation: 8,
       }}
     >
-      <View className="flex-row items-center gap-3">
-        <CimitMascot size={52} tone={tone} />
-        <View className="flex-1">
-          <View className="flex-row items-center gap-1.5">
-            <Text className="font-display text-base font-bold text-zinc-900 dark:text-zinc-100">
-              Cimit
-            </Text>
-            {isRoast ? (
-              <View className="flex-row items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 dark:bg-red-950">
-                <Flame size={11} color="#ef4444" />
-                <Text className="font-sans text-[10px] font-bold text-red-500">roast mode</Text>
-              </View>
-            ) : null}
+      <View
+        style={{
+          position: 'absolute',
+          top: -30,
+          right: -30,
+          width: 120,
+          height: 120,
+          borderRadius: 60,
+          backgroundColor: '#FF6B35',
+          opacity: 0.15,
+        }}
+        pointerEvents="none"
+      />
+      <View style={{ padding: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              backgroundColor: '#FF6B35',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Sparkles size={22} color="#ffffff" />
           </View>
-          <Text className="font-sans text-xs text-zinc-500 dark:text-zinc-400">
-            {isRoast ? 'Ada yang mau gue komentarin nih' : 'Tips harian buat lo'}
-          </Text>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: '#ffffff' }}>
+                Cimit AI
+              </Text>
+              {isRoast ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(239,68,68,0.2)', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 }}>
+                  <Flame size={11} color="#ef4444" />
+                  <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 10, color: '#ef4444' }}>roast mode</Text>
+                </View>
+              ) : null}
+            </View>
+            <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886', marginTop: 2 }}>
+              {isRoast ? 'Ada yang mau gue komentarin nih' : 'Tips harian buat lo'}
+            </Text>
+          </View>
+          <ChevronRight size={18} color="#8A8886" />
         </View>
-        <ChevronRight size={18} color="#a1a1aa" />
-      </View>
 
-      <View className="mt-3 rounded-2xl bg-primary-50 px-4 py-3 dark:bg-primary-950">
-        {loading ? (
-          <View className="flex-row items-center gap-2 py-1">
-            <ActivityIndicator size="small" color="#ea580c" />
-            <Text className="font-sans text-sm text-zinc-500 dark:text-zinc-400">
-              Cimit lagi mikir...
-            </Text>
-          </View>
-        ) : (
-          <View className="flex-row items-start gap-2">
-            <Text className="flex-1 font-sans text-sm leading-5 text-zinc-700 dark:text-zinc-200">
-              {message ?? 'Catat makan lo dulu biar Cimit bisa kasih saran yang pas.'}
-            </Text>
-            {message ? <TtsButton text={message} tone={tone} /> : null}
-          </View>
-        )}
+        <View style={{ marginTop: 12, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: 'rgba(255,255,255,0.07)' }}>
+          {loading ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 }}>
+              <ActivityIndicator size="small" color="#FF6B35" />
+              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#8A8886' }}>
+                Cimit lagi mikir...
+              </Text>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+              <Text style={{ flex: 1, fontFamily: 'Outfit_400Regular', fontSize: 14, lineHeight: 22, color: '#F8F7F4' }}>
+                {message ?? 'Catat makan lo dulu biar Cimit bisa kasih saran yang pas.'}
+              </Text>
+              {message ? <TtsButton text={message} tone={tone} /> : null}
+            </View>
+          )}
+        </View>
       </View>
     </Pressable>
   )

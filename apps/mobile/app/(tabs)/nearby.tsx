@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { MapPin, Navigation, Utensils } from 'lucide-react-native'
+import { MapPin, Navigation, Sparkles, Utensils } from 'lucide-react-native'
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { EatingMode, NearbyResponse } from '@cimeat/types'
-import { CimitMascot } from '~/components/cimit/cimit-mascot'
 import { TtsButton } from '~/components/cimit/tts-button'
 import { QuotaBadge } from '~/components/quota-badge'
 import { ScreenFade } from '~/components/screen-fade'
@@ -12,7 +11,6 @@ import { useSubscription } from '~/hooks/use-subscription'
 import { apiErrorMessage, isQuotaExceeded } from '~/lib/api'
 import { track } from '~/lib/analytics'
 import { getCurrentCoords } from '~/lib/location'
-import { useAccentColor } from '~/lib/use-accent-color'
 
 const MODES: { key: EatingMode; label: string; emoji: string }[] = [
   { key: 'hemat', label: 'Hemat', emoji: '💸' },
@@ -21,7 +19,6 @@ const MODES: { key: EatingMode; label: string; emoji: string }[] = [
 ]
 
 export default function NearbyTab() {
-  const accent = useAccentColor()
   const recommend = useNearbyRecommend()
   const { openPaywall } = useSubscription()
   const [mode, setMode] = useState<EatingMode>('balanced')
@@ -62,40 +59,37 @@ export default function NearbyTab() {
   const busy = locating || recommend.isPending
 
   return (
-    <SafeAreaView className="flex-1 bg-cream dark:bg-zinc-950" edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F7F4' }} edges={['top']}>
       <ScreenFade>
-        <View className="flex-row items-center justify-between px-4 pb-1 pt-2">
-          <Text className="font-display text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 4, paddingTop: 12 }}>
+          <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 26, color: '#1A1C1E' }}>
             Makan di sekitar
           </Text>
           <QuotaBadge feature="nearby" />
         </View>
 
-        <ScrollView className="flex-1" contentContainerClassName="px-4 pb-32 pt-3" showsVerticalScrollIndicator={false}>
-          <Text className="mb-2 font-sans text-xs font-semibold uppercase tracking-wide text-zinc-500">
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120, paddingTop: 12 }} showsVerticalScrollIndicator={false}>
+          <Text style={{ marginBottom: 8, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: '#8A8886' }}>
             Mode
           </Text>
-          <View className="flex-row gap-2">
+          <View style={{ flexDirection: 'row', gap: 8 }}>
             {MODES.map((m) => {
               const active = mode === m.key
               return (
                 <Pressable
                   key={m.key}
                   onPress={() => setMode(m.key)}
-                  className={
-                    active
-                      ? 'flex-1 items-center rounded-2xl bg-primary-600 py-3'
-                      : 'flex-1 items-center rounded-2xl bg-white py-3 dark:bg-zinc-900'
-                  }
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    alignItems: 'center',
+                    borderRadius: 20,
+                    backgroundColor: active ? '#FF6B35' : '#FFFFFF',
+                    paddingVertical: 14,
+                    opacity: pressed ? 0.85 : 1,
+                  })}
                 >
-                  <Text className="text-lg">{m.emoji}</Text>
-                  <Text
-                    className={
-                      active
-                        ? 'mt-1 font-sans text-xs font-semibold text-white'
-                        : 'mt-1 font-sans text-xs font-medium text-zinc-600 dark:text-zinc-300'
-                    }
-                  >
+                  <Text style={{ fontSize: 20 }}>{m.emoji}</Text>
+                  <Text style={{ marginTop: 4, fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : '#8A8886' }}>
                     {m.label}
                   </Text>
                 </Pressable>
@@ -106,14 +100,24 @@ export default function NearbyTab() {
           <Pressable
             onPress={find}
             disabled={busy}
-            className="mt-4 flex-row items-center justify-center gap-2 rounded-full bg-primary-600 py-3.5 active:opacity-90 disabled:opacity-50"
+            style={({ pressed }) => ({
+              marginTop: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              borderRadius: 99,
+              backgroundColor: '#FF6B35',
+              paddingVertical: 14,
+              opacity: pressed || busy ? 0.7 : 1,
+            })}
           >
             {busy ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <>
                 <Navigation size={18} color="#fff" />
-                <Text className="font-sans text-sm font-semibold text-white">
+                <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#ffffff' }}>
                   Cari makanan di sekitar
                 </Text>
               </>
@@ -121,50 +125,53 @@ export default function NearbyTab() {
           </Pressable>
 
           {!result && !busy ? (
-            <View className="mt-8 items-center">
-              <View className="h-16 w-16 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-950">
-                <MapPin size={28} color={accent} />
+            <View style={{ marginTop: 32, alignItems: 'center' }}>
+              <View style={{ width: 72, height: 72, alignItems: 'center', justifyContent: 'center', borderRadius: 36, backgroundColor: '#FFF3EE' }}>
+                <MapPin size={30} color="#FF6B35" />
               </View>
-              <Text className="mt-4 text-center font-sans text-sm leading-5 text-zinc-500 dark:text-zinc-400">
-                Pilih mode terus tap tombol di atas. Cimit bakal saranin makanan terdekat yang
-                cocok.
+              <Text style={{ marginTop: 16, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 14, lineHeight: 22, color: '#8A8886' }}>
+                Pilih mode terus tap tombol di atas. Cimit bakal saranin makanan terdekat yang cocok.
               </Text>
             </View>
           ) : null}
 
           {result ? (
-            <View className="mt-5">
-              <View className="mb-3 flex-row items-start gap-2 rounded-2xl bg-primary-50 px-3 py-2.5 dark:bg-primary-950">
-                <CimitMascot size={36} />
-                <Text className="flex-1 font-sans text-sm leading-5 text-zinc-700 dark:text-zinc-200">
+            <View style={{ marginTop: 20 }}>
+              <View style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderRadius: 24, backgroundColor: '#2A2D30', paddingHorizontal: 16, paddingVertical: 14 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FF6B35', alignItems: 'center', justifyContent: 'center' }}>
+                  <Sparkles size={16} color="#ffffff" />
+                </View>
+                <Text style={{ flex: 1, fontFamily: 'Outfit_400Regular', fontSize: 14, lineHeight: 22, color: '#F8F7F4' }}>
                   {result.cimit_message}
                 </Text>
                 <TtsButton text={result.cimit_message} size={16} />
               </View>
 
-              <View className="gap-2">
+              <View style={{ gap: 10 }}>
                 {result.items.map((item, i) => (
-                  <View key={`${item.name}-${i}`} className="rounded-card bg-white p-4 dark:bg-zinc-900">
-                    <View className="flex-row items-start justify-between gap-2">
-                      <View className="flex-1">
-                        <Text className="font-sans text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                  <View key={`${item.name}-${i}`} style={{ borderRadius: 24, backgroundColor: '#FFFFFF', padding: 16, shadowColor: '#1A1C1E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: '#1A1C1E' }}>
                           {item.name}
                         </Text>
-                        <Text className="mt-0.5 font-sans text-xs text-zinc-500 dark:text-zinc-400">
+                        <Text style={{ marginTop: 2, fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8886' }}>
                           {item.food_type} · {item.distance_m} m
                         </Text>
                       </View>
-                      <Text className="font-display text-sm font-bold text-primary-600 dark:text-primary-300">
-                        ~{item.estimated_calories} kkal
-                      </Text>
+                      <View style={{ borderRadius: 12, backgroundColor: '#FFF3EE', paddingHorizontal: 10, paddingVertical: 4 }}>
+                        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 13, color: '#FF6B35' }}>
+                          ~{item.estimated_calories} kkal
+                        </Text>
+                      </View>
                     </View>
-                    <View className="mt-2 flex-row items-center gap-1.5">
-                      <Utensils size={13} color={accent} />
-                      <Text className="flex-1 font-sans text-xs font-medium text-zinc-700 dark:text-zinc-200">
+                    <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Utensils size={13} color="#FF6B35" />
+                      <Text style={{ flex: 1, fontFamily: 'Outfit_700Bold', fontSize: 12, color: '#1A1C1E' }}>
                         Pesan: {item.suggested_order}
                       </Text>
                     </View>
-                    <Text className="mt-1 font-sans text-xs leading-4 text-zinc-500 dark:text-zinc-400">
+                    <Text style={{ marginTop: 4, fontFamily: 'Outfit_400Regular', fontSize: 12, lineHeight: 18, color: '#8A8886' }}>
                       {item.reason}
                     </Text>
                   </View>

@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { loadEnv } from '../env'
 import { logger } from '../logger'
 
@@ -81,6 +81,35 @@ export async function uploadBase64(
     return `${cfg.publicUrl.replace(/\/$/, '')}/${key}`
   } catch (err) {
     logger.error({ err, prefix }, 'storage upload failed')
+    return null
+  }
+}
+
+export async function getOrUploadAudio(
+  buffer: Buffer,
+  mimeType: string,
+  key: string,
+): Promise<string | null> {
+  const cfg = getConfig()
+  if (!cfg) return null
+
+  const s3 = getClient(cfg)
+  const publicUrl = `${cfg.publicUrl.replace(/\/$/, '')}/${key}`
+
+  try {
+    await s3.send(new HeadObjectCommand({ Bucket: cfg.bucket, Key: key }))
+    return publicUrl
+  } catch {
+    /* not found — upload below */
+  }
+
+  try {
+    await s3.send(
+      new PutObjectCommand({ Bucket: cfg.bucket, Key: key, Body: buffer, ContentType: mimeType }),
+    )
+    return publicUrl
+  } catch (err) {
+    logger.error({ err, key }, 'storage upload failed')
     return null
   }
 }
