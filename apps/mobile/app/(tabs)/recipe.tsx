@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Banknote, Leaf, Plus, Salad, Scale, Sparkles, UtensilsCrossed, X } from 'lucide-react-native'
 import {
   ActivityIndicator,
@@ -11,6 +11,12 @@ import {
   TextInput,
   View,
 } from 'react-native'
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { CreateFoodLogInput, EatingMode, RecipeResponse } from '@cimeat/types'
 import { formatKcal } from '@cimeat/chat-core'
@@ -165,30 +171,14 @@ export default function RecipeTab() {
               Mode
             </Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              {MODES.map((m) => {
-                const active = mode === m.key
-                return (
-                  <Pressable
-                    key={m.key}
-                    onPress={() => setMode(m.key)}
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      alignItems: 'center',
-                      borderRadius: 20,
-                      backgroundColor: active ? m.color : c.card,
-                      paddingVertical: 14,
-                      opacity: pressed ? 0.85 : 1,
-                    })}
-                  >
-                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: active ? 'rgba(255,255,255,0.2)' : c.cardAlt, alignItems: 'center', justifyContent: 'center' }}>
-                      <m.Icon size={18} color={active ? '#ffffff' : c.textSub} />
-                    </View>
-                    <Text style={{ marginTop: 6, fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : c.textSub }}>
-                      {m.label}
-                    </Text>
-                  </Pressable>
-                )
-              })}
+              {MODES.map((m) => (
+                <AnimatedModeButton
+                  key={m.key}
+                  item={m}
+                  active={mode === m.key}
+                  onPress={() => setMode(m.key)}
+                />
+              ))}
             </View>
 
             <View style={{ marginTop: 16, flexDirection: 'row', gap: 12 }}>
@@ -285,6 +275,41 @@ export default function RecipeTab() {
         </KeyboardAvoidingView>
       </ScreenFade>
     </SafeAreaView>
+  )
+}
+
+function AnimatedModeButton({ item, active, onPress }: { item: ModeItem; active: boolean; onPress: () => void }) {
+  const c = useThemeColors()
+  const iconScale = useSharedValue(1)
+  const cardScale = useSharedValue(1)
+
+  useEffect(() => {
+    if (active) {
+      iconScale.value = withSequence(
+        withSpring(1.5, { damping: 5, stiffness: 450 }),
+        withSpring(1, { damping: 12 }),
+      )
+      cardScale.value = withSequence(
+        withSpring(0.94, { damping: 10 }),
+        withSpring(1, { damping: 12 }),
+      )
+    }
+  }, [active, iconScale, cardScale])
+
+  const iconStyle = useAnimatedStyle(() => ({ transform: [{ scale: iconScale.value }] }))
+  const cardStyle = useAnimatedStyle(() => ({ transform: [{ scale: cardScale.value }] }))
+
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.9 : 1 })}>
+      <Animated.View style={[{ alignItems: 'center', borderRadius: 20, backgroundColor: active ? item.color : c.card, paddingVertical: 14 }, cardStyle]}>
+        <Animated.View style={[{ width: 36, height: 36, borderRadius: 18, backgroundColor: active ? 'rgba(255,255,255,0.2)' : c.cardAlt, alignItems: 'center', justifyContent: 'center' }, iconStyle]}>
+          <item.Icon size={18} color={active ? '#ffffff' : c.textSub} />
+        </Animated.View>
+        <Text style={{ marginTop: 6, fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : c.textSub }}>
+          {item.label}
+        </Text>
+      </Animated.View>
+    </Pressable>
   )
 }
 
