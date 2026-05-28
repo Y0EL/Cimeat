@@ -20,6 +20,8 @@ type Props = {
   strokeWidth?: number
   analyzing?: boolean
   displayNumber?: number
+  centerMode?: 'remaining' | 'consumed'
+  showSub?: boolean
 }
 
 export function CalorieRing({
@@ -29,6 +31,8 @@ export function CalorieRing({
   strokeWidth = 18,
   analyzing = false,
   displayNumber,
+  centerMode = 'remaining',
+  showSub = true,
 }: Props) {
   const c = useThemeColors()
   const radius = (size - strokeWidth) / 2
@@ -118,13 +122,13 @@ export function CalorieRing({
           </Text>
         ) : (
           <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 48, color: c.text, fontVariant: ['tabular-nums'] }}>
-            {Math.abs(remaining).toLocaleString('id-ID')}
+            {(centerMode === 'consumed' ? Math.round(consumed) : Math.abs(remaining)).toLocaleString('id-ID')}
           </Text>
         )}
         <Text style={{ marginTop: 4, fontFamily: 'Outfit_700Bold', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: c.textSub }}>
-          {analyzing ? 'menganalisa' : over ? 'kkal lebih' : 'kkal tersisa'}
+          {analyzing ? 'menganalisa' : centerMode === 'consumed' ? 'kkal masuk' : over ? 'kkal lebih' : 'kkal tersisa'}
         </Text>
-        {analyzing ? null : (
+        {analyzing || !showSub ? null : (
           <Text style={{ marginTop: 8, fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>
             {Math.round(consumed).toLocaleString('id-ID')} / {Math.round(goal).toLocaleString('id-ID')}
           </Text>
