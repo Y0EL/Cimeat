@@ -2,6 +2,7 @@ import { useId } from 'react'
 import { Text, View } from 'react-native'
 import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg'
 import type { FlexTrendItem } from '@cimeat/types'
+import { useThemeColors } from '~/lib/theme'
 
 const CHART_H = 160
 const H_PAD = 20
@@ -48,13 +49,14 @@ export function LineChart({
   data,
   width,
   period,
-  color = '#ea580c',
+  color = '#FF6B35',
 }: {
   data: FlexTrendItem[]
   width: number
   period: 'daily' | 'weekly' | 'monthly' | 'yearly'
   color?: string
 }) {
+  const c = useThemeColors()
   const gradId = useId().replace(/:/g, '')
 
   if (data.length === 0 || width <= 0) return <View style={{ height: CHART_H + 24, width }} />
@@ -114,7 +116,7 @@ export function LineChart({
             cx={p.x}
             cy={p.y}
             r={DOT_R}
-            fill="white"
+            fill={c.card}
             stroke={color}
             strokeWidth="1.5"
           />
@@ -130,7 +132,7 @@ export function LineChart({
               key={d.label}
               style={{ position: 'absolute', left: x - 16, width: 32, alignItems: 'center' }}
             >
-              <Text className="font-sans text-[10px] text-zinc-400 dark:text-zinc-500">
+              <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 10, color: c.textSub }}>
                 {formatLabel(d.label, period)}
               </Text>
             </View>

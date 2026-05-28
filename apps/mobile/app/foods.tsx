@@ -9,13 +9,13 @@ import { ScreenFade } from '~/components/screen-fade'
 import { useCreateFood, useDeleteFood, useFoods, useUpdateFood } from '~/hooks/use-foods'
 import { apiErrorMessage } from '~/lib/api'
 import { categoryList, getCategoryMeta } from '~/lib/categories'
-import { useAccentColor } from '~/lib/use-accent-color'
+import { useThemeColors } from '~/lib/theme'
 
 type Editing = { mode: 'new' } | { mode: 'edit'; food: FoodDto } | null
 
 export default function FoodsScreen() {
+  const c = useThemeColors()
   const router = useRouter()
-  const accent = useAccentColor()
   const foods = useFoods()
   const del = useDeleteFood()
   const update = useUpdateFood()
@@ -44,33 +44,33 @@ export default function FoodsScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-cream dark:bg-zinc-950" edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top']}>
       <ScreenFade>
-        <View className="flex-row items-center justify-between px-4 pt-2">
-          <View className="flex-row items-center gap-2">
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Pressable
               onPress={() => router.back()}
-              className="h-9 w-9 items-center justify-center rounded-full bg-white dark:bg-zinc-900"
+              style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: c.card }}
             >
-              <ChevronLeft size={20} color="#71717a" />
+              <ChevronLeft size={20} color={c.textSub} />
             </Pressable>
-            <Text className="font-display text-xl font-bold text-zinc-900 dark:text-zinc-100">
+            <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 20, color: c.text }}>
               Makanan Saya
             </Text>
           </View>
           <Pressable
             onPress={() => setEditing({ mode: 'new' })}
             accessibilityLabel="Tambah makanan"
-            className="h-9 w-9 items-center justify-center rounded-full bg-primary-600 active:opacity-80"
+            style={({ pressed }) => ({ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#FF6B35', opacity: pressed ? 0.8 : 1 })}
           >
             <Plus size={18} color="#fff" />
           </Pressable>
         </View>
 
-        <ScrollView className="flex-1" contentContainerClassName="px-4 pb-10 pt-4">
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40, paddingTop: 16 }}>
           {favorites.length > 0 ? (
-            <View className="mb-5">
-              <Text className="mb-2 font-sans text-xs font-semibold uppercase tracking-widest text-zinc-500">
+            <View style={{ marginBottom: 20 }}>
+              <Text style={{ marginBottom: 8, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: c.textSub }}>
                 Favorit
               </Text>
               <FoodList
@@ -82,7 +82,7 @@ export default function FoodsScreen() {
             </View>
           ) : null}
 
-          <Text className="mb-2 font-sans text-xs font-semibold uppercase tracking-widest text-zinc-500">
+          <Text style={{ marginBottom: 8, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: c.textSub }}>
             Makanan custom
           </Text>
           {custom.length > 0 ? (
@@ -93,12 +93,12 @@ export default function FoodsScreen() {
               onDelete={onDelete}
             />
           ) : (
-            <View className="items-center rounded-card bg-white px-6 py-10 dark:bg-zinc-900">
-              <Heart size={24} color={accent} />
-              <Text className="mt-3 font-display text-base font-bold text-zinc-900 dark:text-zinc-100">
+            <View style={{ alignItems: 'center', borderRadius: 24, backgroundColor: c.card, paddingHorizontal: 24, paddingVertical: 40 }}>
+              <Heart size={24} color="#FF6B35" />
+              <Text style={{ marginTop: 12, fontFamily: 'Outfit_700Bold', fontSize: 16, color: c.text }}>
                 Belum ada makanan custom
               </Text>
-              <Text className="mt-1 text-center font-sans text-sm text-zinc-500 dark:text-zinc-400">
+              <Text style={{ marginTop: 4, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 14, color: c.textSub }}>
                 Tambah makanan yang sering lo makan biar gampang dicatat.
               </Text>
             </View>
@@ -122,43 +122,41 @@ function FoodList({
   onEdit: (f: FoodDto) => void
   onDelete: (f: FoodDto) => void
 }) {
+  const c = useThemeColors()
   return (
-    <View className="gap-2">
+    <View style={{ gap: 8 }}>
       {foods.map((f) => {
         const meta = getCategoryMeta(f.category)
         const Icon = meta.icon
         return (
           <View
             key={f.id}
-            className="flex-row items-center gap-3 rounded-card bg-white px-4 py-3 dark:bg-zinc-900"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 24, backgroundColor: c.card, paddingHorizontal: 16, paddingVertical: 12 }}
           >
-            <View
-              className="h-10 w-10 items-center justify-center rounded-full"
-              style={{ backgroundColor: meta.soft }}
-            >
+            <View style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: meta.soft }}>
               <Icon size={18} color={meta.tint} />
             </View>
-            <View className="flex-1">
-              <Text className="font-sans text-base font-semibold text-zinc-900 dark:text-zinc-100">
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 15, color: c.text }}>
                 {f.name}
               </Text>
-              <Text className="mt-0.5 font-sans text-xs text-zinc-500 dark:text-zinc-400">
+              <Text style={{ marginTop: 2, fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>
                 {f.servingLabel} · {formatKcal(f.calories)}
               </Text>
             </View>
-            <Pressable onPress={() => onFav(f)} className="p-1.5">
+            <Pressable onPress={() => onFav(f)} style={{ padding: 6 }}>
               <Heart
                 size={18}
-                color={f.isFavorite ? '#ef4444' : '#a1a1aa'}
+                color={f.isFavorite ? '#ef4444' : c.textSub}
                 fill={f.isFavorite ? '#ef4444' : 'none'}
               />
             </Pressable>
             {!f.isPreset ? (
               <>
-                <Pressable onPress={() => onEdit(f)} className="p-1.5">
-                  <Pencil size={16} color="#71717a" />
+                <Pressable onPress={() => onEdit(f)} style={{ padding: 6 }}>
+                  <Pencil size={16} color={c.textSub} />
                 </Pressable>
-                <Pressable onPress={() => onDelete(f)} className="p-1.5">
+                <Pressable onPress={() => onDelete(f)} style={{ padding: 6 }}>
                   <Trash2 size={16} color="#ef4444" />
                 </Pressable>
               </>
@@ -171,6 +169,7 @@ function FoodList({
 }
 
 function FoodEditor({ editing, onClose }: { editing: Editing; onClose: () => void }) {
+  const c = useThemeColors()
   const create = useCreateFood()
   const update = useUpdateFood()
   const food = editing?.mode === 'edit' ? editing.food : null
@@ -231,17 +230,17 @@ function FoodEditor({ editing, onClose }: { editing: Editing; onClose: () => voi
 
   return (
     <Modal visible={editing !== null} transparent animationType="slide" onRequestClose={handleClose}>
-      <View className="flex-1 justify-end bg-black/50">
-        <View className="rounded-t-sheet bg-cream p-5 dark:bg-zinc-950">
-          <View className="mb-4 flex-row items-center justify-between">
-            <Text className="font-display text-lg font-bold text-zinc-900 dark:text-zinc-100">
+      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <View style={{ borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: c.bg, padding: 20 }}>
+          <View style={{ marginBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 18, color: c.text }}>
               {food ? 'Edit makanan' : 'Makanan baru'}
             </Text>
             <Pressable
               onPress={handleClose}
-              className="h-9 w-9 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800"
+              style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: c.cardAlt }}
             >
-              <X size={18} color="#71717a" />
+              <X size={18} color={c.textSub} />
             </Pressable>
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 460 }}>
@@ -253,8 +252,8 @@ function FoodEditor({ editing, onClose }: { editing: Editing; onClose: () => voi
               onChange={setCalories}
               keyboard="number-pad"
             />
-            <View className="flex-row gap-3">
-              <View className="flex-1">
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
                 <Input
                   label="Protein"
                   value={protein}
@@ -262,37 +261,27 @@ function FoodEditor({ editing, onClose }: { editing: Editing; onClose: () => voi
                   keyboard="number-pad"
                 />
               </View>
-              <View className="flex-1">
+              <View style={{ flex: 1 }}>
                 <Input label="Karbo" value={carb} onChange={setCarb} keyboard="number-pad" />
               </View>
-              <View className="flex-1">
+              <View style={{ flex: 1 }}>
                 <Input label="Lemak" value={fat} onChange={setFat} keyboard="number-pad" />
               </View>
             </View>
-            <Text className="mb-1.5 font-sans text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <Text style={{ marginBottom: 6, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: c.textSub }}>
               Kategori
             </Text>
-            <View className="flex-row flex-wrap gap-2">
-              {categoryList.map((c) => {
-                const active = category === c.key
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {categoryList.map((cat) => {
+                const active = category === cat.key
                 return (
                   <Pressable
-                    key={c.key}
-                    onPress={() => setCategory(c.key)}
-                    className={
-                      active
-                        ? 'rounded-full bg-primary-600 px-3.5 py-2'
-                        : 'rounded-full bg-white px-3.5 py-2 dark:bg-zinc-900'
-                    }
+                    key={cat.key}
+                    onPress={() => setCategory(cat.key)}
+                    style={{ borderRadius: 99, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: active ? '#FF6B35' : c.card }}
                   >
-                    <Text
-                      className={
-                        active
-                          ? 'font-sans text-xs font-semibold text-white'
-                          : 'font-sans text-xs font-medium text-zinc-600 dark:text-zinc-300'
-                      }
-                    >
-                      {c.label}
+                    <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : c.textSub }}>
+                      {cat.label}
                     </Text>
                   </Pressable>
                 )
@@ -302,9 +291,9 @@ function FoodEditor({ editing, onClose }: { editing: Editing; onClose: () => voi
           <Pressable
             onPress={save}
             disabled={create.isPending || update.isPending}
-            className="mt-4 items-center rounded-full bg-primary-600 py-3.5 active:opacity-90 disabled:opacity-50"
+            style={({ pressed }) => ({ marginTop: 16, alignItems: 'center', borderRadius: 99, backgroundColor: '#FF6B35', paddingVertical: 14, opacity: pressed || create.isPending || update.isPending ? 0.7 : 1 })}
           >
-            <Text className="font-sans text-sm font-semibold text-white">Simpan</Text>
+            <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#ffffff' }}>Simpan</Text>
           </Pressable>
         </View>
       </View>
@@ -323,17 +312,18 @@ function Input({
   onChange: (v: string) => void
   keyboard?: 'number-pad'
 }) {
+  const c = useThemeColors()
   return (
-    <View className="mb-3">
-      <Text className="mb-1.5 font-sans text-xs font-semibold uppercase tracking-wide text-zinc-500">
+    <View style={{ marginBottom: 12 }}>
+      <Text style={{ marginBottom: 6, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: c.textSub }}>
         {label}
       </Text>
       <TextInput
         value={value}
         onChangeText={onChange}
-        placeholderTextColor="#a1a1aa"
+        placeholderTextColor={c.textSub}
         keyboardType={keyboard}
-        className="rounded-input bg-white px-4 py-3 font-sans text-base text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100"
+        style={{ borderRadius: 14, backgroundColor: c.card, paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 16, color: c.text }}
       />
     </View>
   )

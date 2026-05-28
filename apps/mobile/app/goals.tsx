@@ -15,7 +15,7 @@ import { useGoals, useUpsertGoal } from '~/hooks/use-goals'
 import { useProfile, useUpdateProfile } from '~/hooks/use-summary'
 import { apiErrorMessage } from '~/lib/api'
 import { MACRO_COLORS } from '~/lib/categories'
-import { useAccentColor } from '~/lib/use-accent-color'
+import { useThemeColors } from '~/lib/theme'
 
 type Mode = 'manual' | 'auto'
 
@@ -34,8 +34,8 @@ const GOAL_TYPES: { key: GoalType; label: string }[] = [
 ]
 
 export default function GoalsScreen() {
+  const c = useThemeColors()
   const router = useRouter()
-  const accent = useAccentColor()
   const goals = useGoals()
   const upsert = useUpsertGoal()
   const profile = useProfile()
@@ -119,41 +119,31 @@ export default function GoalsScreen() {
   ]
 
   return (
-    <SafeAreaView className="flex-1 bg-cream dark:bg-zinc-950" edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top']}>
       <ScreenFade>
-        <View className="flex-row items-center gap-2 px-4 pt-2">
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 8 }}>
           <Pressable
             onPress={() => router.back()}
-            className="h-9 w-9 items-center justify-center rounded-full bg-white dark:bg-zinc-900"
+            style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: c.card }}
           >
-            <ChevronLeft size={20} color="#71717a" />
+            <ChevronLeft size={20} color={c.textSub} />
           </Pressable>
-          <Text className="font-display text-xl font-bold text-zinc-900 dark:text-zinc-100">
+          <Text style={{ fontFamily: 'Outfit_900Black', fontSize: 20, color: c.text }}>
             Target nutrisi
           </Text>
         </View>
 
-        <ScrollView className="flex-1" contentContainerClassName="px-4 pb-10 pt-4">
-          <View className="flex-row gap-1 rounded-full bg-zinc-100 p-1 dark:bg-zinc-800">
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40, paddingTop: 16 }}>
+          <View style={{ flexDirection: 'row', gap: 4, borderRadius: 99, backgroundColor: c.cardAlt, padding: 4 }}>
             {(['manual', 'auto'] as Mode[]).map((mk) => {
               const active = mode === mk
               return (
                 <Pressable
                   key={mk}
                   onPress={() => setMode(mk)}
-                  className={
-                    active
-                      ? 'flex-1 items-center rounded-full bg-primary-600 py-2'
-                      : 'flex-1 items-center rounded-full py-2'
-                  }
+                  style={{ flex: 1, alignItems: 'center', borderRadius: 99, paddingVertical: 8, backgroundColor: active ? '#FF6B35' : 'transparent' }}
                 >
-                  <Text
-                    className={
-                      active
-                        ? 'font-sans text-sm font-semibold text-white'
-                        : 'font-sans text-sm font-medium text-zinc-600 dark:text-zinc-300'
-                    }
-                  >
+                  <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 14, color: active ? '#ffffff' : c.textSub }}>
                     {mk === 'manual' ? 'Manual' : 'Hitung otomatis'}
                   </Text>
                 </Pressable>
@@ -162,14 +152,14 @@ export default function GoalsScreen() {
           </View>
 
           {mode === 'manual' ? (
-            <View className="mt-4">
-              <View className="items-center rounded-card bg-white py-5 dark:bg-zinc-900">
+            <View style={{ marginTop: 16 }}>
+              <View style={{ alignItems: 'center', borderRadius: 24, backgroundColor: c.card, paddingVertical: 20 }}>
                 <DonutChart
                   slices={slices}
                   centerLabel="Kalori"
                   centerValue={`${Math.round(Number(calorie) || 0)}`}
                 />
-                <View className="mt-2 flex-row gap-4">
+                <View style={{ marginTop: 8, flexDirection: 'row', gap: 16 }}>
                   <Legend color={MACRO_COLORS.protein} label="Protein" />
                   <Legend color={MACRO_COLORS.carb} label="Karbo" />
                   <Legend color={MACRO_COLORS.fat} label="Lemak" />
@@ -179,18 +169,18 @@ export default function GoalsScreen() {
               <Field label="Target kalori (kkal)">
                 <Input value={calorie} onChange={setCalorie} keyboard="number-pad" />
               </Field>
-              <View className="flex-row gap-3">
-                <View className="flex-1">
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
                   <Field label="Protein (g)">
                     <Input value={protein} onChange={setProtein} keyboard="number-pad" />
                   </Field>
                 </View>
-                <View className="flex-1">
+                <View style={{ flex: 1 }}>
                   <Field label="Karbo (g)">
                     <Input value={carb} onChange={setCarb} keyboard="number-pad" />
                   </Field>
                 </View>
-                <View className="flex-1">
+                <View style={{ flex: 1 }}>
                   <Field label="Lemak (g)">
                     <Input value={fat} onChange={setFat} keyboard="number-pad" />
                   </Field>
@@ -206,28 +196,28 @@ export default function GoalsScreen() {
               <Pressable
                 onPress={saveManual}
                 disabled={upsert.isPending}
-                className="mt-3 items-center rounded-full bg-primary-600 py-3.5 active:opacity-90 disabled:opacity-50"
+                style={({ pressed }) => ({ marginTop: 12, alignItems: 'center', borderRadius: 99, backgroundColor: '#FF6B35', paddingVertical: 14, opacity: pressed || upsert.isPending ? 0.7 : 1 })}
               >
-                <Text className="font-sans text-sm font-semibold text-white">
+                <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#ffffff' }}>
                   {upsert.isPending ? 'Nyimpen...' : 'Simpan target'}
                 </Text>
               </Pressable>
             </View>
           ) : (
-            <View className="mt-4">
-              <View className="mb-3 flex-row items-center gap-2 rounded-card bg-primary-50 px-4 py-3 dark:bg-primary-950">
-                <Sparkles size={16} color={accent} />
-                <Text className="flex-1 font-sans text-xs text-zinc-600 dark:text-zinc-300">
+            <View style={{ marginTop: 16 }}>
+              <View style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 24, backgroundColor: c.orangeSoft, paddingHorizontal: 16, paddingVertical: 12 }}>
+                <Sparkles size={16} color="#FF6B35" />
+                <Text style={{ flex: 1, fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>
                   Isi data tubuh lo, Cimeat hitungin target kalori & makro yang pas.
                 </Text>
               </View>
-              <View className="flex-row gap-3">
-                <View className="flex-1">
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
                   <Field label="Tinggi (cm)">
                     <Input value={height} onChange={setHeight} keyboard="number-pad" />
                   </Field>
                 </View>
-                <View className="flex-1">
+                <View style={{ flex: 1 }}>
                   <Field label="Berat (kg)">
                     <Input value={weight} onChange={setWeight} keyboard="decimal-pad" />
                   </Field>
@@ -263,9 +253,9 @@ export default function GoalsScreen() {
               <Pressable
                 onPress={saveAuto}
                 disabled={updateProfile.isPending}
-                className="mt-3 items-center rounded-full bg-primary-600 py-3.5 active:opacity-90 disabled:opacity-50"
+                style={({ pressed }) => ({ marginTop: 12, alignItems: 'center', borderRadius: 99, backgroundColor: '#FF6B35', paddingVertical: 14, opacity: pressed || updateProfile.isPending ? 0.7 : 1 })}
               >
-                <Text className="font-sans text-sm font-semibold text-white">
+                <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#ffffff' }}>
                   {updateProfile.isPending ? 'Menghitung...' : 'Hitung target'}
                 </Text>
               </Pressable>
@@ -278,18 +268,20 @@ export default function GoalsScreen() {
 }
 
 function Legend({ color, label }: { color: string; label: string }) {
+  const c = useThemeColors()
   return (
-    <View className="flex-row items-center gap-1.5">
-      <View className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-      <Text className="font-sans text-xs text-zinc-500 dark:text-zinc-400">{label}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
+      <Text style={{ fontFamily: 'Outfit_400Regular', fontSize: 12, color: c.textSub }}>{label}</Text>
     </View>
   )
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const c = useThemeColors()
   return (
-    <View className="mb-3">
-      <Text className="mb-1.5 font-sans text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+    <View style={{ marginBottom: 12 }}>
+      <Text style={{ marginBottom: 6, fontFamily: 'Outfit_700Bold', fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', color: c.textSub }}>
         {label}
       </Text>
       {children}
@@ -306,14 +298,15 @@ function Input({
   onChange: (v: string) => void
   keyboard: 'number-pad' | 'decimal-pad'
 }) {
+  const c = useThemeColors()
   return (
     <TextInput
       value={value}
       onChangeText={onChange}
       placeholder="0"
-      placeholderTextColor="#a1a1aa"
+      placeholderTextColor={c.textSub}
       keyboardType={keyboard}
-      className="rounded-input bg-white px-4 py-3 font-sans text-base text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100"
+      style={{ borderRadius: 14, backgroundColor: c.card, paddingHorizontal: 16, paddingVertical: 12, fontFamily: 'Outfit_400Regular', fontSize: 16, color: c.text }}
     />
   )
 }
@@ -327,27 +320,18 @@ function Segmented<T extends string>({
   value: T
   onChange: (v: T) => void
 }) {
+  const c = useThemeColors()
   return (
-    <View className="flex-row flex-wrap gap-2">
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
       {options.map((o) => {
         const active = value === o.key
         return (
           <Pressable
             key={o.key}
             onPress={() => onChange(o.key)}
-            className={
-              active
-                ? 'rounded-full bg-primary-600 px-4 py-2'
-                : 'rounded-full bg-white px-4 py-2 dark:bg-zinc-900'
-            }
+            style={{ borderRadius: 99, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: active ? '#FF6B35' : c.card }}
           >
-            <Text
-              className={
-                active
-                  ? 'font-sans text-xs font-semibold text-white'
-                  : 'font-sans text-xs font-medium text-zinc-600 dark:text-zinc-300'
-              }
-            >
+            <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : c.textSub }}>
               {o.label}
             </Text>
           </Pressable>
