@@ -1,6 +1,13 @@
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 import type { CimitMessageDto, CimitTone, CimitTtsResponse, CimitVoice } from '@cimeat/types'
 import { apiFetch } from '~/lib/api'
+
+function adviceDayKey(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 export function useCimitHistory() {
   return useQuery({
@@ -10,14 +17,40 @@ export function useCimitHistory() {
 }
 
 export function useDailyAdvice() {
+  const qc = useQueryClient()
+  const today = adviceDayKey()
+  const storageKey = `cimit_advice_${today}`
+  const [checked, setChecked] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    AsyncStorage.getItem(storageKey)
+      .then((value) => {
+        if (!active) return
+        if (value) qc.setQueryData(['cimit-advice', today], JSON.parse(value))
+        setChecked(true)
+      })
+      .catch(() => {
+        if (active) setChecked(true)
+      })
+    return () => {
+      active = false
+    }
+  }, [storageKey, today, qc])
+
   return useQuery({
-    queryKey: ['cimit-advice'],
-    queryFn: () =>
-      apiFetch<{ message: string }>('/v1/cimit/daily-advice', {
+    queryKey: ['cimit-advice', today],
+    queryFn: async () => {
+      const res = await apiFetch<{ message: string }>('/v1/cimit/daily-advice', {
         method: 'POST',
         body: JSON.stringify({}),
-      }),
-    staleTime: 5 * 60_000,
+      })
+      await AsyncStorage.setItem(storageKey, JSON.stringify(res)).catch(() => {})
+      return res
+    },
+    enabled: checked,
+    staleTime: Infinity,
+    gcTime: Infinity,
     retry: 0,
   })
 }
