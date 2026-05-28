@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import iconImage from '~/assets/icon.png'
 import { GoogleSignInButton } from '~/components/google-sign-in-button'
 import { useLang, type Lang } from '~/lib/lang-context'
+import { useThemeColors } from '~/lib/theme'
 
 const LANG_OPTIONS: { key: Lang; label: string }[] = [
   { key: 'id', label: 'ID' },
@@ -21,13 +22,14 @@ function hasOAuthConfigured(): boolean {
 }
 
 export default function LoginScreen() {
+  const c = useThemeColors()
   const ready = hasOAuthConfigured()
   const { lang, setLang } = useLang()
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F7F4' }} edges={['top', 'bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top', 'bottom']}>
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingTop: 12 }}>
-        <View style={{ flexDirection: 'row', overflow: 'hidden', borderRadius: 99, backgroundColor: '#F0EEE9' }}>
+        <View style={{ flexDirection: 'row', overflow: 'hidden', borderRadius: 99, backgroundColor: c.cardAlt }}>
           {LANG_OPTIONS.map((opt) => {
             const active = lang === opt.key
             return (
@@ -38,7 +40,7 @@ export default function LoginScreen() {
                 accessibilityLabel={opt.label}
                 style={{ paddingHorizontal: 14, paddingVertical: 6, backgroundColor: active ? '#FF6B35' : 'transparent' }}
               >
-                <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : '#8A8886' }}>
+                <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : c.textSub }}>
                   {opt.label}
                 </Text>
               </Pressable>
@@ -54,10 +56,10 @@ export default function LoginScreen() {
             style={{ width: 64, height: 64, borderRadius: 20 }}
             resizeMode="cover"
           />
-          <Text style={{ marginTop: 32, fontFamily: 'Outfit_900Black', fontSize: 38, lineHeight: 46, color: '#1A1C1E' }}>
+          <Text style={{ marginTop: 32, fontFamily: 'Outfit_900Black', fontSize: 38, lineHeight: 46, color: c.text }}>
             Lacak kalori,{'\n'}gampang banget.
           </Text>
-          <Text style={{ marginTop: 12, maxWidth: 300, fontFamily: 'Outfit_400Regular', fontSize: 16, lineHeight: 26, color: '#8A8886' }}>
+          <Text style={{ marginTop: 12, maxWidth: 300, fontFamily: 'Outfit_400Regular', fontSize: 16, lineHeight: 26, color: c.textSub }}>
             Foto makanan, catat, dan tau target kalori lo. Ditemani AI Diet Coach yang ngerti makan lo.
           </Text>
         </View>
@@ -72,16 +74,16 @@ export default function LoginScreen() {
           {ready ? (
             <GoogleSignInButton />
           ) : (
-            <View style={{ borderRadius: 20, backgroundColor: '#FFF3EE', padding: 16 }}>
+            <View style={{ borderRadius: 20, backgroundColor: c.orangeSoft, padding: 16 }}>
               <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#FF6B35' }}>
                 Google Sign In belum aktif
               </Text>
-              <Text style={{ marginTop: 4, fontFamily: 'Outfit_400Regular', fontSize: 13, lineHeight: 20, color: '#8A8886' }}>
+              <Text style={{ marginTop: 4, fontFamily: 'Outfit_400Regular', fontSize: 13, lineHeight: 20, color: c.textSub }}>
                 Isi EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB di apps/mobile/.env lalu restart server.
               </Text>
             </View>
           )}
-          <Text style={{ textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 12, lineHeight: 18, color: '#D0CEC9' }}>
+          <Text style={{ textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 12, lineHeight: 18, color: c.textFaint }}>
             Dengan lanjut lo setuju ke ketentuan dan kebijakan privasi Cimeat.
           </Text>
         </View>
@@ -91,14 +93,15 @@ export default function LoginScreen() {
 }
 
 function Feature({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
+  const c = useThemeColors()
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, backgroundColor: '#FFFFFF', padding: 16 }}>
-      <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: '#FFF3EE' }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, backgroundColor: c.card, padding: 16 }}>
+      <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: c.orangeSoft }}>
         {icon}
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#1A1C1E' }}>{title}</Text>
-        <Text style={{ marginTop: 2, fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#8A8886' }}>{body}</Text>
+        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.text }}>{title}</Text>
+        <Text style={{ marginTop: 2, fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub }}>{body}</Text>
       </View>
     </View>
   )

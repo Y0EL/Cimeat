@@ -11,14 +11,22 @@ export function GoogleSignInButton() {
         accessibilityLabel="Lanjut pakai Google"
         disabled={!isReady || signingIn}
         onPress={signIn}
-        className="items-center rounded-full bg-primary-600 py-4 active:opacity-90 disabled:opacity-50"
+        style={({ pressed }) => ({
+          alignItems: 'center',
+          borderRadius: 99,
+          backgroundColor: '#FF6B35',
+          paddingVertical: 16,
+          opacity: pressed || !isReady || signingIn ? 0.6 : 1,
+        })}
       >
-        <Text className="font-sans text-base font-semibold text-white">
+        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: '#ffffff' }}>
           {signingIn ? 'Lagi masuk' : 'Lanjut pakai Google'}
         </Text>
       </Pressable>
       {error ? (
-        <Text className="mt-2 text-center font-sans text-sm text-danger">{error}</Text>
+        <Text style={{ marginTop: 8, textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#ef4444' }}>
+          {error}
+        </Text>
       ) : null}
     </View>
   )
