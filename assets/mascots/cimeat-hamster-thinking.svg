@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="judul deskripsi">
+  <title id="judul">Maskot hamster Cimeat berpikir</title>
+  <desc id="deskripsi">Maskot hamster Cimeat hitam putih dengan ekspresi berpikir dan paw kecil di pipi.</desc>
+  <g fill="none" stroke="#000000" stroke-width="34" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M280 320C238 234 322 155 432 178C478 188 509 216 512 223C515 216 546 188 592 178C702 155 786 234 744 320C788 304 821 335 795 380C814 412 792 452 747 459C768 530 719 596 633 594C594 594 550 575 512 535C474 575 430 594 391 594C305 596 256 530 277 459C232 452 210 412 229 380C203 335 236 304 280 320Z"/>
+    <path d="M276 459C190 386 84 430 94 536C50 566 52 648 113 666C86 713 112 783 184 778C177 837 242 890 325 851C363 915 459 895 512 778C565 895 661 915 699 851C782 890 847 837 840 778C912 783 938 713 911 666C972 648 974 566 930 536C940 430 834 386 748 459"/>
+    <circle cx="406" cy="376" r="76"/>
+    <circle cx="618" cy="376" r="76"/>
+    <path d="M399 372C386 387 387 412 401 418C415 412 419 387 405 372"/>
+    <path d="M619 386C606 401 607 426 621 432C635 426 639 401 625 386"/>
+    <path d="M478 523C498 506 526 506 546 523"/>
+    <path d="M654 568C688 542 731 557 733 603C734 638 701 659 670 643"/>
+    <path d="M689 575C681 594 681 613 691 630"/>
+    <circle cx="751" cy="249" r="20"/>
+    <circle cx="808" cy="198" r="13"/>
+  </g>
+</svg>
