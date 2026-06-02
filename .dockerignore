@@ -20,6 +20,7 @@ dist
 .DS_Store
 **/.DS_Store
 
+CONTOH_ANDROID
 apps/mobile
 apps/bot
 apps/bot-whatsapp

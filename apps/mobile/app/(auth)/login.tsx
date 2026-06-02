@@ -1,108 +1,146 @@
-import { Camera, Flame, MessageCircle } from 'lucide-react-native'
-import { Image, Pressable, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import iconImage from '~/assets/icon.png'
-import { GoogleSignInButton } from '~/components/google-sign-in-button'
-import { useLang, type Lang } from '~/lib/lang-context'
-import { useThemeColors } from '~/lib/theme'
-
-const LANG_OPTIONS: { key: Lang; label: string }[] = [
-  { key: 'id', label: 'ID' },
-  { key: 'en', label: 'EN' },
-  { key: 'zh', label: '中' },
-]
-
-function hasOAuthConfigured(): boolean {
-  if (typeof process === 'undefined') return false
-  return Boolean(
-    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID ||
-    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS ||
-    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
-  )
-}
+import { useState } from 'react'
+import { StyleSheet, View, Alert, Platform } from 'react-native'
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { Screen, Text, Button } from '@/components/ui'
+import { useTheme } from '@/hooks/use-theme'
+import { auth, isFirebaseConfigured } from '@/lib/firebase'
+import { useAuthStore } from '@/stores/auth-store'
+import { Spacing, Radius } from '@/constants/tokens'
 
 export default function LoginScreen() {
-  const c = useThemeColors()
-  const ready = hasOAuthConfigured()
-  const { lang, setLang } = useLang()
+  const { colors } = useTheme()
+  const [loading, setLoading] = useState(false)
+  const [guestLoading, setGuestLoading] = useState(false)
+  const signInAsGuest = useAuthStore((s) => s.signInAsGuest)
+
+  async function handleGoogleSignIn() {
+    if (!isFirebaseConfigured) return
+    setLoading(true)
+    try {
+      if (Platform.OS === 'web') {
+        const provider = new GoogleAuthProvider()
+        await signInWithPopup(auth, provider)
+      }
+    } catch {
+      setLoading(false)
+    }
+  }
+
+  async function handleGuestSignIn() {
+    setGuestLoading(true)
+    try {
+      await signInAsGuest()
+    } catch {
+      setGuestLoading(false)
+    }
+  }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top', 'bottom']}>
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingTop: 12 }}>
-        <View style={{ flexDirection: 'row', overflow: 'hidden', borderRadius: 99, backgroundColor: c.cardAlt }}>
-          {LANG_OPTIONS.map((opt) => {
-            const active = lang === opt.key
-            return (
-              <Pressable
-                key={opt.key}
-                onPress={() => setLang(opt.key)}
-                accessibilityRole="button"
-                accessibilityLabel={opt.label}
-                style={{ paddingHorizontal: 14, paddingVertical: 6, backgroundColor: active ? '#FF6B35' : 'transparent' }}
-              >
-                <Text style={{ fontFamily: active ? 'Outfit_700Bold' : 'Outfit_400Regular', fontSize: 12, color: active ? '#ffffff' : c.textSub }}>
-                  {opt.label}
-                </Text>
-              </Pressable>
-            )
-          })}
-        </View>
-      </View>
-
-      <View style={{ flex: 1, justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 32, paddingTop: 24 }}>
-        <View>
-          <Image
-            source={iconImage}
-            style={{ width: 64, height: 64, borderRadius: 20 }}
-            resizeMode="cover"
-          />
-          <Text style={{ marginTop: 32, fontFamily: 'Outfit_900Black', fontSize: 38, lineHeight: 46, color: c.text }}>
-            Lacak kalori,{'\n'}gampang banget.
-          </Text>
-          <Text style={{ marginTop: 12, maxWidth: 300, fontFamily: 'Outfit_400Regular', fontSize: 16, lineHeight: 26, color: c.textSub }}>
-            Foto makanan, catat, dan tau target kalori lo. Ditemani AI Diet Coach yang ngerti makan lo.
-          </Text>
+    <Screen padded={false}>
+      <View style={styles.container}>
+        <View style={styles.heroArea}>
+          <View style={[styles.logoCircle, { backgroundColor: colors.primaryMuted }]}>
+            <Text variant="largeTitle" color={colors.primary} align="center" style={styles.logoLetter}>
+              C
+            </Text>
+          </View>
         </View>
 
-        <View style={{ gap: 10 }}>
-          <Feature icon={<Camera size={20} color="#FF6B35" />} title="Foto makanan" body="AI hitung kalori & makro otomatis." />
-          <Feature icon={<Flame size={20} color="#FF6B35" />} title="Target harian" body="Lihat sisa kalori lo tiap hari." />
-          <Feature icon={<MessageCircle size={20} color="#FF6B35" />} title="AI Diet Coach" body="Tanya apa aja soal makanan & target." />
-        </View>
+        <View style={styles.content}>
+          <View style={styles.textBlock}>
+            <Text variant="largeTitle" align="center">
+              Cimeat
+            </Text>
+            <Text variant="body" color={colors.textSecondary} align="center" style={styles.tagline}>
+              Pantau kalori harian.{'\n'}Capai tujuanmu.
+            </Text>
+          </View>
 
-        <View style={{ gap: 12 }}>
-          {ready ? (
-            <GoogleSignInButton />
-          ) : (
-            <View style={{ borderRadius: 20, backgroundColor: c.orangeSoft, padding: 16 }}>
-              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#FF6B35' }}>
-                Google Sign In belum aktif
-              </Text>
-              <Text style={{ marginTop: 4, fontFamily: 'Outfit_400Regular', fontSize: 13, lineHeight: 20, color: c.textSub }}>
-                Isi EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB di apps/mobile/.env lalu restart server.
-              </Text>
+          <View style={styles.stats}>
+            <View style={styles.statItem}>
+              <Text variant="title2" color={colors.primary}>AI</Text>
+              <Text variant="caption" color={colors.textSecondary}>Food Scanner</Text>
             </View>
-          )}
-          <Text style={{ textAlign: 'center', fontFamily: 'Outfit_400Regular', fontSize: 12, lineHeight: 18, color: c.textFaint }}>
-            Dengan lanjut lo setuju ke ketentuan dan kebijakan privasi Cimeat.
-          </Text>
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.statItem}>
+              <Text variant="title2" color={colors.primary}>35+</Text>
+              <Text variant="caption" color={colors.textSecondary}>Makanan Lokal</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.statItem}>
+              <Text variant="title2" color={colors.primary}>Gratis</Text>
+              <Text variant="caption" color={colors.textSecondary}>Mulai Sekarang</Text>
+            </View>
+          </View>
+
+          <View style={styles.actions}>
+            <Button
+              title="Mulai Sekarang"
+              onPress={handleGuestSignIn}
+              loading={guestLoading}
+              variant="primary"
+            />
+            <Button
+              title="Masuk dengan Google"
+              onPress={handleGoogleSignIn}
+              loading={loading}
+              variant="secondary"
+            />
+          </View>
         </View>
       </View>
-    </SafeAreaView>
+    </Screen>
   )
 }
 
-function Feature({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
-  const c = useThemeColors()
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, backgroundColor: c.card, padding: 16 }}>
-      <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: c.orangeSoft }}>
-        {icon}
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, color: c.text }}>{title}</Text>
-        <Text style={{ marginTop: 2, fontFamily: 'Outfit_400Regular', fontSize: 13, color: c.textSub }}>{body}</Text>
-      </View>
-    </View>
-  )
-}
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  heroArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
+  },
+  logoCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoLetter: {
+    fontSize: 48,
+  },
+  content: {
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: 48,
+  },
+  textBlock: {
+    alignItems: 'center',
+    marginBottom: Spacing.xxl,
+  },
+  tagline: {
+    marginTop: Spacing.sm,
+    lineHeight: 24,
+  },
+  stats: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.xxl,
+    gap: Spacing.lg,
+  },
+  statItem: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 32,
+  },
+  actions: {
+    gap: Spacing.md,
+  },
+})

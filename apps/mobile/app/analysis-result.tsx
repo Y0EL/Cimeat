@@ -1,8 +1,8 @@
 import { Stack } from 'expo-router'
-import { GoalsScreen } from '@/screens/goals'
+import { AnalysisResultScreen } from '@/screens/analysis-result'
 import { useTheme } from '@/hooks/use-theme'
 
-export default function GoalsRoute() {
+export default function AnalysisResultRoute() {
   const { colors } = useTheme()
 
   return (
@@ -10,13 +10,13 @@ export default function GoalsRoute() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: 'Target',
+          title: 'Hasil Analisis',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.textPrimary,
           headerShadowVisible: false,
         }}
       />
-      <GoalsScreen />
+      <AnalysisResultScreen />
     </>
   )
 }

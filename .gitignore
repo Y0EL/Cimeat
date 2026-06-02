@@ -8,6 +8,7 @@ build
 .turbo
 coverage
 *.tsbuildinfo
+CONTOH_ANDROID
 
 .env
 .env.local
