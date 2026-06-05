@@ -7,7 +7,6 @@ import {
   type FoodAnalysis,
 } from '@cimeat/types'
 import type { Database, FoodLog } from '@cimeat/db'
-import { loadEnv } from '../env'
 import { generateJson } from './ai-orchestrator'
 import { foodAnalysisToLogValues, saveAnalysisLog } from './food-analysis-shared'
 import { uploadBase64 } from './storage-service'
@@ -18,16 +17,14 @@ export async function analyzeImage(
   input: AnalyzeImageRequest,
   tone: CimitTone,
 ): Promise<{ analysis: AnalyzeImageResponse; log: FoodLog | null }> {
-  const env = loadEnv()
   const analysis = await generateJson<AnalyzeImageResponse>({
-    model: env.GEMINI_MODEL_VISION,
     systemInstruction: composeSystemPrompt(analyzeImageTask, {
       includePersona: true,
       tone,
     }),
     parts: [
-      { inlineData: { mimeType: input.mimeType, data: input.image } },
-      { text: 'Analisis foto makanan ini.' },
+      { type: 'image', mimeType: input.mimeType, data: input.image },
+      { type: 'text', text: 'Analisis foto makanan ini.' },
     ],
     schema: analyzeImageResponseSchema,
     label: 'vision',

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { StyleSheet, View, Image } from 'react-native'
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth'
 import Constants from 'expo-constants'
 import { Screen, Text, Button, Toast } from '@/components/ui'
@@ -9,9 +8,19 @@ import { auth, isFirebaseConfigured } from '@/lib/firebase'
 import { useAuthStore } from '@/stores/auth-store'
 import { Spacing } from '@/constants/tokens'
 
-GoogleSignin.configure({
-  webClientId: Constants.expoConfig?.extra?.googleWebClientId ?? '',
-})
+// Dynamic import supaya gak crash di Expo Go (native module opsional)
+let GoogleSignin: any = null
+let statusCodes: any = {}
+try {
+  const m = require('@react-native-google-signin/google-signin')
+  GoogleSignin = m.GoogleSignin
+  statusCodes = m.statusCodes
+  GoogleSignin.configure({
+    webClientId: Constants.expoConfig?.extra?.googleWebClientId ?? '',
+  })
+} catch {
+  // native module tidak tersedia (Expo Go / web)
+}
 
 export default function LoginScreen() {
   const { colors } = useTheme()
@@ -26,6 +35,10 @@ export default function LoginScreen() {
   }
 
   async function handleGoogleSignIn() {
+    if (!GoogleSignin) {
+      showError('Tidak tersedia', 'Google Sign-in butuh native build, pakai login tamu dulu.')
+      return
+    }
     if (!isFirebaseConfigured) {
       showError('Firebase Error', 'Konfigurasi belum lengkap.')
       return

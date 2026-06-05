@@ -92,7 +92,6 @@ export async function recommendNearby(
   tone: CimitTone,
 ): Promise<NearbyResponse> {
   const candidates = await fetchPlaces(input)
-  const env = loadEnv()
 
   const prompt = [
     `Mode: ${input.mode}.`,
@@ -101,9 +100,8 @@ export async function recommendNearby(
   ].join('\n')
 
   const ranked = await generateJson<z.infer<typeof nearbyModelSchema>>({
-    model: env.GEMINI_MODEL_CHAT,
     systemInstruction: composeSystemPrompt(nearbyRecommendTask, { includePersona: true, tone }),
-    parts: [{ text: prompt }],
+    parts: [{ type: 'text', text: prompt }],
     schema: nearbyModelSchema,
     label: 'nearby',
   })

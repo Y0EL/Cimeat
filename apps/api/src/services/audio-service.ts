@@ -1,4 +1,4 @@
-import { analyzeAudioTask, composeSystemPrompt } from '@cimeat/prompts'
+import { analyzeTextTask, composeSystemPrompt } from '@cimeat/prompts'
 import {
   analyzeAudioResponseSchema,
   type AnalyzeAudioRequest,
@@ -7,8 +7,7 @@ import {
   type FoodAnalysis,
 } from '@cimeat/types'
 import type { Database, FoodLog } from '@cimeat/db'
-import { loadEnv } from '../env'
-import { generateJson } from './ai-orchestrator'
+import { generateJson, whisperTranscribe } from './ai-orchestrator'
 import { saveAnalysisLog } from './food-analysis-shared'
 import { uploadBase64 } from './storage-service'
 
@@ -18,20 +17,19 @@ export async function analyzeAudio(
   input: AnalyzeAudioRequest,
   tone: CimitTone,
 ): Promise<{ analysis: AnalyzeAudioResponse; log: FoodLog | null }> {
-  const env = loadEnv()
-  const analysis = await generateJson<AnalyzeAudioResponse>({
-    model: env.GEMINI_MODEL_AUDIO,
-    systemInstruction: composeSystemPrompt(analyzeAudioTask, {
+  const transcript = await whisperTranscribe(input.audio, input.mimeType)
+
+  const base = await generateJson<FoodAnalysis>({
+    systemInstruction: composeSystemPrompt(analyzeTextTask, {
       includePersona: true,
       tone,
     }),
-    parts: [
-      { inlineData: { mimeType: input.mimeType, data: input.audio } },
-      { text: 'Transkrip lalu estimasi makanannya.' },
-    ],
-    schema: analyzeAudioResponseSchema,
+    parts: [{ type: 'text', text: transcript }],
+    schema: analyzeAudioResponseSchema.omit({ transcript: true, draft_id: true }),
     label: 'audio',
   })
+
+  const analysis: AnalyzeAudioResponse = { ...base, transcript }
 
   let log: FoodLog | null = null
   if (input.saveMode === 'save') {
@@ -40,7 +38,7 @@ export async function analyzeAudio(
       analysis: analysis as FoodAnalysis,
       source: 'audio',
       audioUrl,
-      note: analysis.transcript,
+      note: transcript,
     })
   }
   return { analysis, log }

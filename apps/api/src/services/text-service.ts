@@ -6,7 +6,6 @@ import {
   type FoodAnalysis,
 } from '@cimeat/types'
 import type { Database, FoodLog } from '@cimeat/db'
-import { loadEnv } from '../env'
 import { generateJson } from './ai-orchestrator'
 import { saveAnalysisLog } from './food-analysis-shared'
 
@@ -16,14 +15,12 @@ export async function analyzeText(
   input: AnalyzeTextRequest,
   tone: CimitTone,
 ): Promise<{ analysis: FoodAnalysis; log: FoodLog | null }> {
-  const env = loadEnv()
   const analysis = await generateJson<FoodAnalysis>({
-    model: env.GEMINI_MODEL_CHAT,
     systemInstruction: composeSystemPrompt(analyzeTextTask, {
       includePersona: true,
       tone,
     }),
-    parts: [{ text: input.text }],
+    parts: [{ type: 'text', text: input.text }],
     schema: foodAnalysisSchema,
     label: 'text',
   })

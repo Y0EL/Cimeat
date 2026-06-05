@@ -8,7 +8,6 @@ import {
   type RecipeResponse,
 } from '@cimeat/types'
 import type { z } from 'zod'
-import { loadEnv } from '../env'
 import { generateJson } from './ai-orchestrator'
 
 const recipeModelSchema = recipeResponseSchema.omit({ id: true, mode: true })
@@ -29,11 +28,9 @@ export async function generateRecipe(
   input: RecipeGenerateInput,
   tone: CimitTone,
 ): Promise<RecipeResponse> {
-  const env = loadEnv()
   const partial = await generateJson<z.infer<typeof recipeModelSchema>>({
-    model: env.GEMINI_MODEL_CHAT,
     systemInstruction: composeSystemPrompt(generateRecipeTask, { includePersona: true, tone }),
-    parts: [{ text: buildPrompt(input) }],
+    parts: [{ type: 'text', text: buildPrompt(input) }],
     schema: recipeModelSchema,
     label: 'recipe',
   })

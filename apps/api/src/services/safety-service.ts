@@ -1,5 +1,4 @@
 import { safetyRulesSystem } from '@cimeat/prompts'
-import { loadEnv } from '../env'
 import { logger } from '../logger'
 import { generateText } from './ai-orchestrator'
 
@@ -19,12 +18,11 @@ export function isUnsafe(text: string): boolean {
 export async function ensureSafe(text: string): Promise<string> {
   if (!isUnsafe(text)) return text
   try {
-    const env = loadEnv()
     const rewritten = await generateText({
-      model: env.GEMINI_MODEL_CHAT,
       systemInstruction: safetyRulesSystem,
       parts: [
         {
+          type: 'text',
           text: `Tulis ulang teks berikut agar AMAN (tanpa body shaming, tanpa diet ekstrem/puasa total/muntah), tetap suportif dan fokus recovery. Pertahankan gaya santai. Output teksnya saja:\n\n${text}`,
         },
       ],
