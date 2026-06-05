@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
-import { StyleSheet, View, Alert, Image } from 'react-native'
+import { useState } from 'react'
+import { StyleSheet, View, Image } from 'react-native'
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth'
 import Constants from 'expo-constants'
-import { Screen, Text, Button } from '@/components/ui'
+import { Screen, Text, Button, Toast } from '@/components/ui'
 import { useTheme } from '@/hooks/use-theme'
 import { auth, isFirebaseConfigured } from '@/lib/firebase'
 import { useAuthStore } from '@/stores/auth-store'
@@ -19,9 +19,15 @@ export default function LoginScreen() {
   const [guestLoading, setGuestLoading] = useState(false)
   const signInAsGuest = useAuthStore((s) => s.signInAsGuest)
 
+  const [toast, setToast] = useState<{ title: string; message?: string } | null>(null)
+
+  function showError(title: string, message?: string) {
+    setToast({ title, message })
+  }
+
   async function handleGoogleSignIn() {
     if (!isFirebaseConfigured) {
-      Alert.alert('Error', 'Firebase belum dikonfigurasi.')
+      showError('Firebase Error', 'Konfigurasi belum lengkap.')
       return
     }
     setLoading(true)
@@ -36,16 +42,16 @@ export default function LoginScreen() {
       if (e.code === statusCodes.SIGN_IN_CANCELLED) return
       if (e.code === statusCodes.IN_PROGRESS) return
       if (e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        Alert.alert('Error', 'Google Play Services tidak tersedia.')
+        showError('Google Play', 'Play Services tidak tersedia di perangkat ini.')
         return
       }
-      Alert.alert('Login Gagal', e?.message ?? 'Terjadi kesalahan saat login dengan Google.')
+      showError('Login Gagal', e?.message ?? 'Terjadi kesalahan.')
     }
   }
 
   async function handleGuestSignIn() {
     if (!isFirebaseConfigured) {
-      Alert.alert('Error', 'Firebase belum dikonfigurasi.')
+      showError('Firebase Error', 'Konfigurasi belum lengkap.')
       return
     }
     setGuestLoading(true)
@@ -53,11 +59,11 @@ export default function LoginScreen() {
       await signInAsGuest()
     } catch (e: any) {
       setGuestLoading(false)
-      const msg =
-        e?.code === 'auth/operation-not-allowed'
-          ? 'Aktifkan Anonymous Sign-in di Firebase Console → Authentication → Sign-in methods.'
-          : e?.message ?? 'Terjadi kesalahan.'
-      Alert.alert('Login Gagal', msg)
+      if (e?.code === 'auth/operation-not-allowed') {
+        showError('Belum Aktif', 'Aktifkan Anonymous Sign-in di Firebase Console.')
+      } else {
+        showError('Login Gagal', e?.message ?? 'Terjadi kesalahan.')
+      }
     }
   }
 
@@ -115,6 +121,14 @@ export default function LoginScreen() {
           </View>
         </View>
       </View>
+
+      <Toast
+        visible={!!toast}
+        title={toast?.title ?? ''}
+        message={toast?.message}
+        type="error"
+        onHide={() => setToast(null)}
+      />
     </Screen>
   )
 }
