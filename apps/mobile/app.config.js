@@ -53,6 +53,7 @@ module.exports = {
       'expo-router',
       'expo-font',
       'expo-image-picker',
+      'expo-audio',
       'expo-secure-store',
       '@react-native-google-signin/google-signin',
     ],

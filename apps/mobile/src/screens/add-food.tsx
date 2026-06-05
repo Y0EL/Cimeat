@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { StyleSheet, View, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
-import { Audio } from 'expo-av'
+import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio'
 import { Camera, Mic, Type, Search, Sparkles, X, StopCircle } from 'lucide-react-native'
 import { Screen, Text, Pressable, Input, Button, Toast } from '@/components/ui'
 import type { ToastType } from '@/components/ui'
@@ -16,23 +16,11 @@ export function AddFoodScreen() {
   const router = useRouter()
   const analyzeImage = useAnalyzeImage()
   const analyzeText = useAnalyzeText()
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const [textInput, setTextInput] = useState('')
   const [mode, setMode] = useState<'pick' | 'text'>('pick')
-  const [recording, setRecording] = useState<Audio.Recording | null>(null)
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [toast, setToast] = useState<{ title: string; message?: string; type: ToastType } | null>(null)
-
-  const recordingRef = useRef<Audio.Recording | null>(null)
-  useEffect(() => { recordingRef.current = recording }, [recording])
-
-  useEffect(() => {
-    return () => {
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch(() => {})
-        Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {})
-      }
-    }
-  }, [])
 
   function showError(title: string, message?: string) {
     setToast({ title, message, type: 'error' })
@@ -76,12 +64,10 @@ export function AddFoodScreen() {
   }
 
   async function handleVoice() {
-    if (recording) {
+    if (audioRecorder.isRecording) {
       try {
-        await recording.stopAndUnloadAsync()
-        await Audio.setAudioModeAsync({ allowsRecordingIOS: false })
-        const uri = recording.getURI()
-        setRecording(null)
+        await audioRecorder.stop()
+        const uri = audioRecorder.uri
         if (!uri) return
 
         setIsTranscribing(true)
@@ -104,28 +90,21 @@ export function AddFoodScreen() {
           showError('Transkripsi gagal', err?.message)
         }
       } catch (err: any) {
-        setRecording(null)
         setIsTranscribing(false)
         showError('Error', err?.message ?? 'Gagal menghentikan rekaman')
       }
       return
     }
 
-    const { granted } = await Audio.requestPermissionsAsync()
+    const { granted } = await AudioModule.requestRecordingPermissionsAsync()
     if (!granted) {
       showError('Izin mikrofon', 'Berikan akses mikrofon untuk input suara')
       return
     }
 
     try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      })
-      const { recording: rec } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY,
-      )
-      setRecording(rec)
+      await audioRecorder.prepareToRecordAsync()
+      audioRecorder.record()
     } catch (err: any) {
       showError('Rekam gagal', err?.message ?? 'Tidak bisa memulai rekaman')
     }
@@ -158,7 +137,7 @@ export function AddFoodScreen() {
     )
   }
 
-  const isRecording = !!recording
+  const isRecording = audioRecorder.isRecording
 
   return (
     <Screen>
