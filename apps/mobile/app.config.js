@@ -22,6 +22,7 @@ module.exports = {
     name: 'Cimeat',
     slug: 'cimeat',
     version: '1.0.0',
+    owner: 'y0el',
     orientation: 'portrait',
     icon: './assets/icon.png',
     scheme: 'cimeat',
@@ -60,6 +61,9 @@ module.exports = {
       firebaseProjectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
       firebaseAppId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
       apiUrl: 'https://cimeat-api.fly.dev',
+      eas: {
+        projectId: '14b6f806-ea45-4fa5-8998-2671922f2830',
+      },
     },
   },
 }

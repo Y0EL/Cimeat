@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { StyleSheet, View, Alert, Platform } from 'react-native'
+import { StyleSheet, View, Alert, Platform, Image } from 'react-native'
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { Screen, Text, Button } from '@/components/ui'
 import { useTheme } from '@/hooks/use-theme'
@@ -39,11 +39,11 @@ export default function LoginScreen() {
     <Screen padded={false}>
       <View style={styles.container}>
         <View style={styles.heroArea}>
-          <View style={[styles.logoCircle, { backgroundColor: colors.primaryMuted }]}>
-            <Text variant="largeTitle" color={colors.primary} align="center" style={styles.logoLetter}>
-              C
-            </Text>
-          </View>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
         </View>
 
         <View style={styles.content}>
@@ -103,15 +103,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 60,
   },
-  logoCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoLetter: {
-    fontSize: 48,
+  logo: {
+    width: 140,
+    height: 140,
+    borderRadius: 32,
   },
   content: {
     paddingHorizontal: Spacing.xl,
