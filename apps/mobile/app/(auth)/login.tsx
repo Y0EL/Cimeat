@@ -1,11 +1,17 @@
-import { useState } from 'react'
-import { StyleSheet, View, Alert, Platform, Image } from 'react-native'
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { useEffect, useState } from 'react'
+import { StyleSheet, View, Alert, Image } from 'react-native'
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth'
+import Constants from 'expo-constants'
 import { Screen, Text, Button } from '@/components/ui'
 import { useTheme } from '@/hooks/use-theme'
 import { auth, isFirebaseConfigured } from '@/lib/firebase'
 import { useAuthStore } from '@/stores/auth-store'
-import { Spacing, Radius } from '@/constants/tokens'
+import { Spacing } from '@/constants/tokens'
+
+GoogleSignin.configure({
+  webClientId: Constants.expoConfig?.extra?.googleWebClientId ?? '',
+})
 
 export default function LoginScreen() {
   const { colors } = useTheme()
@@ -14,24 +20,44 @@ export default function LoginScreen() {
   const signInAsGuest = useAuthStore((s) => s.signInAsGuest)
 
   async function handleGoogleSignIn() {
-    if (!isFirebaseConfigured) return
+    if (!isFirebaseConfigured) {
+      Alert.alert('Error', 'Firebase belum dikonfigurasi.')
+      return
+    }
     setLoading(true)
     try {
-      if (Platform.OS === 'web') {
-        const provider = new GoogleAuthProvider()
-        await signInWithPopup(auth, provider)
-      }
-    } catch {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
+      await GoogleSignin.signIn()
+      const { idToken } = await GoogleSignin.getTokens()
+      const credential = GoogleAuthProvider.credential(idToken)
+      await signInWithCredential(auth, credential)
+    } catch (e: any) {
       setLoading(false)
+      if (e.code === statusCodes.SIGN_IN_CANCELLED) return
+      if (e.code === statusCodes.IN_PROGRESS) return
+      if (e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Alert.alert('Error', 'Google Play Services tidak tersedia.')
+        return
+      }
+      Alert.alert('Login Gagal', e?.message ?? 'Terjadi kesalahan saat login dengan Google.')
     }
   }
 
   async function handleGuestSignIn() {
+    if (!isFirebaseConfigured) {
+      Alert.alert('Error', 'Firebase belum dikonfigurasi.')
+      return
+    }
     setGuestLoading(true)
     try {
       await signInAsGuest()
-    } catch {
+    } catch (e: any) {
       setGuestLoading(false)
+      const msg =
+        e?.code === 'auth/operation-not-allowed'
+          ? 'Aktifkan Anonymous Sign-in di Firebase Console → Authentication → Sign-in methods.'
+          : e?.message ?? 'Terjadi kesalahan.'
+      Alert.alert('Login Gagal', msg)
     }
   }
 

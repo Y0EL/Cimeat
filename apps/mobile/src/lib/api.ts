@@ -1,6 +1,7 @@
+import Constants from 'expo-constants'
 import { auth } from './firebase'
 
-const BASE_URL = 'http://localhost:3000'
+const BASE_URL = Constants.expoConfig?.extra?.apiUrl ?? 'https://cimeat-api.fly.dev'
 
 class ApiError extends Error {
   constructor(
