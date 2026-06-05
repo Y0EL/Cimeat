@@ -1,6 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app'
-import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { getAuth } from 'firebase/auth'
 import Constants from 'expo-constants'
 
 const firebaseConfig = {
@@ -16,13 +15,8 @@ const firebaseConfig = {
 
 function initFirebase() {
   try {
-    if (getApps().length === 0) {
-      const app = initializeApp(firebaseConfig)
-      return initializeAuth(app, {
-        persistence: getReactNativePersistence(AsyncStorage),
-      })
-    }
-    return getAuth(getApp())
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
+    return getAuth(app)
   } catch {
     return null
   }
