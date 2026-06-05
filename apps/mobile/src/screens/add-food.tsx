@@ -1,11 +1,14 @@
-import { useState } from 'react'
-import { StyleSheet, View, Alert, ActivityIndicator } from 'react-native'
+import { useState, useEffect, useRef } from 'react'
+import { StyleSheet, View, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
-import { Camera, Mic, Type, Search, Sparkles, X } from 'lucide-react-native'
-import { Screen, Text, Pressable, Input, Button } from '@/components/ui'
+import { Audio } from 'expo-av'
+import { Camera, Mic, Type, Search, Sparkles, X, StopCircle } from 'lucide-react-native'
+import { Screen, Text, Pressable, Input, Button, Toast } from '@/components/ui'
+import type { ToastType } from '@/components/ui'
 import { useTheme } from '@/hooks/use-theme'
 import { useAnalyzeImage, useAnalyzeText } from '@/hooks/use-food-ai'
+import { transcribeAudio } from '@/lib/deepgram'
 import { Spacing } from '@/constants/tokens'
 
 export function AddFoodScreen() {
@@ -15,11 +18,30 @@ export function AddFoodScreen() {
   const analyzeText = useAnalyzeText()
   const [textInput, setTextInput] = useState('')
   const [mode, setMode] = useState<'pick' | 'text'>('pick')
+  const [recording, setRecording] = useState<Audio.Recording | null>(null)
+  const [isTranscribing, setIsTranscribing] = useState(false)
+  const [toast, setToast] = useState<{ title: string; message?: string; type: ToastType } | null>(null)
+
+  const recordingRef = useRef<Audio.Recording | null>(null)
+  useEffect(() => { recordingRef.current = recording }, [recording])
+
+  useEffect(() => {
+    return () => {
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync().catch(() => {})
+        Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {})
+      }
+    }
+  }, [])
+
+  function showError(title: string, message?: string) {
+    setToast({ title, message, type: 'error' })
+  }
 
   async function handleCamera() {
     const permission = await ImagePicker.requestCameraPermissionsAsync()
     if (!permission.granted) {
-      Alert.alert('Izin diperlukan', 'Berikan akses kamera untuk memfoto makanan')
+      showError('Izin diperlukan', 'Berikan akses kamera untuk memfoto makanan')
       return
     }
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7, base64: true })
@@ -30,7 +52,9 @@ export function AddFoodScreen() {
         onSuccess(data) {
           router.replace({ pathname: '/analysis-result', params: { result: JSON.stringify(data) } })
         },
-        onError() { Alert.alert('Gagal', 'Tidak bisa menganalisis foto') },
+        onError(err: any) {
+          showError('Scan gagal', err?.message ?? 'Tidak bisa menganalisis foto')
+        },
       },
     )
   }
@@ -44,12 +68,70 @@ export function AddFoodScreen() {
           setTextInput('')
           router.replace({ pathname: '/analysis-result', params: { result: JSON.stringify(data) } })
         },
-        onError() { Alert.alert('Gagal', 'Tidak bisa menganalisis teks') },
+        onError(err: any) {
+          showError('Analisis gagal', err?.message ?? 'Tidak bisa menganalisis teks')
+        },
       },
     )
   }
 
-  const isLoading = analyzeImage.isPending || analyzeText.isPending
+  async function handleVoice() {
+    if (recording) {
+      try {
+        await recording.stopAndUnloadAsync()
+        await Audio.setAudioModeAsync({ allowsRecordingIOS: false })
+        const uri = recording.getURI()
+        setRecording(null)
+        if (!uri) return
+
+        setIsTranscribing(true)
+        try {
+          const transcript = await transcribeAudio(uri)
+          setIsTranscribing(false)
+          analyzeText.mutate(
+            { text: transcript },
+            {
+              onSuccess(data) {
+                router.replace({ pathname: '/analysis-result', params: { result: JSON.stringify(data) } })
+              },
+              onError(err: any) {
+                showError('Analisis gagal', err?.message ?? 'Tidak bisa menganalisis suara')
+              },
+            },
+          )
+        } catch (err: any) {
+          setIsTranscribing(false)
+          showError('Transkripsi gagal', err?.message)
+        }
+      } catch (err: any) {
+        setRecording(null)
+        setIsTranscribing(false)
+        showError('Error', err?.message ?? 'Gagal menghentikan rekaman')
+      }
+      return
+    }
+
+    const { granted } = await Audio.requestPermissionsAsync()
+    if (!granted) {
+      showError('Izin mikrofon', 'Berikan akses mikrofon untuk input suara')
+      return
+    }
+
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      })
+      const { recording: rec } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      )
+      setRecording(rec)
+    } catch (err: any) {
+      showError('Rekam gagal', err?.message ?? 'Tidak bisa memulai rekaman')
+    }
+  }
+
+  const isLoading = analyzeImage.isPending || analyzeText.isPending || isTranscribing
 
   if (isLoading) {
     return (
@@ -58,12 +140,25 @@ export function AddFoodScreen() {
           <View style={[styles.loadingCircle, { backgroundColor: colors.primaryMuted }]}>
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
-          <Text variant="headline">Menganalisis...</Text>
-          <Text variant="subheadline" color={colors.textSecondary}>AI sedang mendeteksi makananmu</Text>
+          <Text variant="headline">
+            {isTranscribing ? 'Mengenali suara...' : 'Menganalisis...'}
+          </Text>
+          <Text variant="subheadline" color={colors.textSecondary}>
+            {isTranscribing ? 'Deepgram memproses audio' : 'AI sedang mendeteksi makananmu'}
+          </Text>
         </View>
+        <Toast
+          visible={!!toast}
+          title={toast?.title ?? ''}
+          message={toast?.message}
+          type={toast?.type ?? 'error'}
+          onHide={() => setToast(null)}
+        />
       </Screen>
     )
   }
+
+  const isRecording = !!recording
 
   return (
     <Screen>
@@ -110,11 +205,20 @@ export function AddFoodScreen() {
           </Pressable>
 
           <View style={styles.secondaryRow}>
-            <Pressable style={[styles.secCard, { backgroundColor: colors.surface }]}>
-              <View style={[styles.secIcon, { backgroundColor: '#EDE9FE' }]}>
-                <Mic size={22} color="#7C3AED" strokeWidth={1.8} />
+            <Pressable
+              onPress={handleVoice}
+              style={[styles.secCard, { backgroundColor: isRecording ? '#7C3AED' : colors.surface }]}
+            >
+              <View style={[styles.secIcon, { backgroundColor: isRecording ? 'rgba(255,255,255,0.2)' : '#EDE9FE' }]}>
+                {isRecording ? (
+                  <StopCircle size={22} color="#FFFFFF" strokeWidth={1.8} />
+                ) : (
+                  <Mic size={22} color="#7C3AED" strokeWidth={1.8} />
+                )}
               </View>
-              <Text variant="headline">Suara</Text>
+              <Text variant="headline" color={isRecording ? '#FFFFFF' : undefined}>
+                {isRecording ? 'Stop' : 'Suara'}
+              </Text>
             </Pressable>
             <Pressable onPress={() => setMode('text')} style={[styles.secCard, { backgroundColor: colors.surface }]}>
               <View style={[styles.secIcon, { backgroundColor: '#DBEAFE' }]}>
@@ -131,6 +235,14 @@ export function AddFoodScreen() {
           </View>
         </View>
       )}
+
+      <Toast
+        visible={!!toast}
+        title={toast?.title ?? ''}
+        message={toast?.message}
+        type={toast?.type ?? 'error'}
+        onHide={() => setToast(null)}
+      />
     </Screen>
   )
 }

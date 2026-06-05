@@ -1,11 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { ChevronLeft, ChevronRight, Flame } from 'lucide-react-native'
 import { Screen, Text, Pressable } from '@/components/ui'
 import { CalorieRing } from '@/components/calorie-ring'
 import { WaterTracker } from '@/components/water-tracker'
 import { MealSection } from '@/components/meal-section'
-import { Skeleton } from '@/components/skeleton'
 import { ErrorState } from '@/components/error-state'
 import { useTheme } from '@/hooks/use-theme'
 import { useDailySummary } from '@/hooks/use-summary'
@@ -90,9 +89,7 @@ export function HomeScreen() {
       {summary.isError ? (
         <ErrorState onRetry={() => summary.refetch()} />
       ) : summary.isLoading ? (
-        <View style={styles.center}>
-          <Skeleton width={220} height={220} borderRadius={110} />
-        </View>
+        <LoadingRing />
       ) : (
         <>
           <CalorieRing consumed={consumed} goal={goal} />
@@ -136,6 +133,17 @@ export function HomeScreen() {
       <View style={styles.bottomSpacer} />
     </Screen>
   )
+}
+
+function LoadingRing() {
+  const [randomCal, setRandomCal] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => {
+      setRandomCal(Math.floor(Math.random() * 2000))
+    }, 80)
+    return () => clearInterval(id)
+  }, [])
+  return <CalorieRing consumed={randomCal} goal={2000} />
 }
 
 function MacroCompact({
@@ -184,10 +192,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingVertical: 6,
-  },
-  center: {
-    alignItems: 'center',
-    paddingVertical: Spacing.xl,
   },
   macroRow: {
     flexDirection: 'row',

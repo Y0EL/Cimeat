@@ -63,6 +63,7 @@ module.exports = {
       firebaseAppId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '1:396423070743:web:b5daac16ed735ff2cac852',
       googleWebClientId: process.env.GOOGLE_WEB_CLIENT_ID || '396423070743-rvpjviacg6oktt1a5g19q1kan81v7av1.apps.googleusercontent.com',
       apiUrl: process.env.EXPO_PUBLIC_API_URL || 'https://cimeat-api.fly.dev',
+      deepgramApiKey: process.env.DEEPGRAM_API || '',
       eas: {
         projectId: '14b6f806-ea45-4fa5-8998-2671922f2830',
       },
